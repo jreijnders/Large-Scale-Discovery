@@ -215,6 +215,7 @@ github.com/shoenig/go-m1cpu v0.1.6/go.mod h1:1JJMcUBvfNwpq05QDQVAnx3gUHr9IYF7GNg
 github.com/shoenig/test v0.6.4 h1:kVTaSd7WLz5WZ2IaoM0RSzRsUD+m8wRR+5qvntpn4LU=
 github.com/shoenig/test v0.6.4/go.mod h1:byHiCGXqrVaflBLAMq/srcZIHynQPQgeyvkvXnjqq0k=
 github.com/siemens/GoScans v0.0.0-20241219103026-9e2d8faf13cd/go.mod h1:gEbOELCc/N/RMkVQ5rkrC70S4BvgPzOXBDkHpi/uR+w=
+github.com/siemens/GoScans v0.0.0-20250915131217-94db0a9f1b2e/go.mod h1:yVJ6D2iEYteqWmEO+aOjcZYTUI/2+RhF4esRaDApBME=
 github.com/siemens/GoScans v1.0.3 h1:WHiX0C4b3Ceyp2R+joV5YVi+cYs1SEwJpoVlhq4yy/c=
 github.com/siemens/GoScans v1.0.3/go.mod h1:yVJ6D2iEYteqWmEO+aOjcZYTUI/2+RhF4esRaDApBME=
 github.com/siemens/ZapSmtp v0.0.0-20250705095924-f7d70e8eea01 h1:nIHaB1xjxlsn2ANRQKxE6f+INy3u41VRz3R1lFsEAtU=
