@@ -1,7 +1,7 @@
 /*
 * Large-Scale Discovery, a network scanning solution for information gathering in large IT/OT network environments.
 *
-* Copyright (c) Siemens AG, 2016-2023.
+* Copyright (c) Siemens AG, 2016-2025.
 *
 * This work is licensed under the terms of the MIT license. For a copy, see the LICENSE file in the top-level
 * directory or visit <https://opensource.org/licenses/MIT>.
@@ -577,115 +577,6 @@ var viewDefinitions = map[string]string{
 			LEFT JOIN t_discovery_services ON t_ssh.id_t_discovery_service = t_discovery_services.id;
 	`,
 
-	"ssl_issues": `
-		CREATE OR REPLACE VIEW ? AS
-		SELECT
-			t_ssl_issues.id,
-			t_discovery_services.address,
-			t_discovery_services.ip,
-			t_discovery_services.dns_name,
-			t_discovery_services.other_names,
-			t_discovery_services.other_ips,
-			t_discovery_services.hops,
-			t_discovery_services.critical,
-			t_discovery_services.scan_cycle,
-			t_discovery_services.port,
-			t_discovery_services.protocol,
-
-			vhost,
-			any_chain_invalid,
-			any_chain_invalid_order,
-			lowest_protocol,
-			min_strength,
-			insecure_renegotiation,
-			accepts_client_renegotiation,
-			insecure_client_renegotiation,
-			session_resumption_with_id,
-			session_resumption_with_tickets,
-			no_perfect_forward_secrecy,
-			compression,
-			export_suite,
-			draft_suite,
-			sslv2_enabled,
-			sslv3_enabled,
-			rc4_enabled,
-			md2_enabled,
-			md5_enabled,
-			sha1_enabled,
-			early_data_supported,
-			ccs_injection,
-			beast,
-			heartbleed,
-			lucky_13,
-			poodle,
-			freak,
-			logjam,
-			sweet_32,
-			drown,
-			is_compliant_to_mozilla_config,
-
-			t_ssl.scan_started,
-			t_ssl.scan_finished,
-			t_ssl.scan_status,
-			t_ssl.scan_ip,
-			t_ssl.scan_hostname,
-
-			t_discovery_services.service,
-			t_discovery_services.service_product,
-			t_discovery_services.service_version,
-			t_discovery_services.service_device_type,
-			t_discovery_services.service_cpes,
-			t_discovery_services.service_flavor,
-			t_discovery_services.service_ttl,
-
-			t_discovery_services.os_guess,
-			t_discovery_services.os_smb,
-			t_discovery_services.os_last_boot,
-			t_discovery_services.os_uptime,
-			t_discovery_services.os_admin_users,
-			t_discovery_services.os_rdp_users,
-
-			t_discovery_services.asset_company,
-			t_discovery_services.asset_department,
-			t_discovery_services.asset_owner,
-
-			t_discovery_services.input,
-			t_discovery_services.input_size,
-
-			t_discovery_services.timezone,
-			t_discovery_services.lat,
-			t_discovery_services.lng,
-			t_discovery_services.postal_address,
-			t_discovery_services.input_network,
-			t_discovery_services.input_country,
-			t_discovery_services.input_location,
-			t_discovery_services.input_routing_domain,
-			t_discovery_services.input_zone,
-			t_discovery_services.input_purpose,
-			t_discovery_services.input_company,
-			t_discovery_services.input_department,
-			t_discovery_services.input_manager,
-			t_discovery_services.input_contact,
-			t_discovery_services.input_comment,
-			t_discovery_services.ad_name,
-			t_discovery_services.ad_distinguished_name,
-			t_discovery_services.ad_dns_name,
-			t_discovery_services.ad_created,
-			t_discovery_services.ad_last_logon,
-			t_discovery_services.ad_last_password,
-			t_discovery_services.ad_description,
-			t_discovery_services.ad_location,
-			t_discovery_services.ad_managed_by,
-			t_discovery_services.ad_managed_by_gid,
-			t_discovery_services.ad_managed_by_ou,
-			t_discovery_services.ad_os,
-			t_discovery_services.ad_os_version,
-			t_discovery_services.ad_service_principal_name
-		FROM t_ssl_issues
-			LEFT JOIN t_discovery_services ON t_ssl_issues.id_t_discovery_service = t_discovery_services.id
-			LEFT JOIN t_ssl ON t_ssl_issues.id_t_ssl = t_ssl.id;
-	`,
-
 	"ssl_ciphers": `
 		CREATE OR REPLACE VIEW ? AS
 		SELECT
@@ -893,6 +784,199 @@ var viewDefinitions = map[string]string{
 		FROM t_ssl_certificates
 			LEFT JOIN t_discovery_services ON t_ssl_certificates.id_t_discovery_service = t_discovery_services.id
 			LEFT JOIN t_ssl ON t_ssl_certificates.id_t_ssl = t_ssl.id;
+	`,
+
+	"ssl_settings": `
+		CREATE OR REPLACE VIEW ? AS
+		SELECT
+			t_ssl_settings.id,
+			t_discovery_services.address,
+			t_discovery_services.ip,
+			t_discovery_services.dns_name,
+			t_discovery_services.other_names,
+			t_discovery_services.other_ips,
+			t_discovery_services.hops,
+			t_discovery_services.critical,
+			t_discovery_services.scan_cycle,
+			t_discovery_services.port,
+			t_discovery_services.protocol,
+			
+			vhost,
+			lowest_protocol,
+			min_strength,
+			ems,
+			tls_fallback_scsv,
+			secure_renegotiation,
+			session_resumption_with_id,
+			session_resumption_with_tickets,
+			is_compliant_to_mozilla_config,
+
+			t_ssl.scan_started,
+			t_ssl.scan_finished,
+			t_ssl.scan_status,
+			t_ssl.scan_ip,
+			t_ssl.scan_hostname,
+
+			t_discovery_services.service,
+			t_discovery_services.service_product,
+			t_discovery_services.service_version,
+			t_discovery_services.service_device_type,
+			t_discovery_services.service_cpes,
+			t_discovery_services.service_flavor,
+			t_discovery_services.service_ttl,
+
+			t_discovery_services.os_guess,
+			t_discovery_services.os_smb,
+			t_discovery_services.os_last_boot,
+			t_discovery_services.os_uptime,
+			t_discovery_services.os_admin_users,
+			t_discovery_services.os_rdp_users,
+
+			t_discovery_services.asset_company,
+			t_discovery_services.asset_department,
+			t_discovery_services.asset_owner,
+
+			t_discovery_services.input,
+			t_discovery_services.input_size,
+
+			t_discovery_services.timezone,
+			t_discovery_services.lat,
+			t_discovery_services.lng,
+			t_discovery_services.postal_address,
+			t_discovery_services.input_network,
+			t_discovery_services.input_country,
+			t_discovery_services.input_location,
+			t_discovery_services.input_routing_domain,
+			t_discovery_services.input_zone,
+			t_discovery_services.input_purpose,
+			t_discovery_services.input_company,
+			t_discovery_services.input_department,
+			t_discovery_services.input_manager,
+			t_discovery_services.input_contact,
+			t_discovery_services.input_comment,
+			t_discovery_services.ad_name,
+			t_discovery_services.ad_distinguished_name,
+			t_discovery_services.ad_dns_name,
+			t_discovery_services.ad_created,
+			t_discovery_services.ad_last_logon,
+			t_discovery_services.ad_last_password,
+			t_discovery_services.ad_description,
+			t_discovery_services.ad_location,
+			t_discovery_services.ad_managed_by,
+			t_discovery_services.ad_managed_by_gid,
+			t_discovery_services.ad_managed_by_ou,
+			t_discovery_services.ad_os,
+			t_discovery_services.ad_os_version,
+			t_discovery_services.ad_service_principal_name
+		FROM t_ssl_settings
+			LEFT JOIN t_discovery_services ON t_ssl_settings.id_t_discovery_service = t_discovery_services.id
+			LEFT JOIN t_ssl ON t_ssl_settings.id_t_ssl = t_ssl.id;
+	`,
+
+	"ssl_issues": `
+		CREATE OR REPLACE VIEW ? AS
+		SELECT
+			t_ssl_issues.id,
+			t_discovery_services.address,
+			t_discovery_services.ip,
+			t_discovery_services.dns_name,
+			t_discovery_services.other_names,
+			t_discovery_services.other_ips,
+			t_discovery_services.hops,
+			t_discovery_services.critical,
+			t_discovery_services.scan_cycle,
+			t_discovery_services.port,
+			t_discovery_services.protocol,
+
+			vhost,
+			low_encryption_strength,
+			any_chain_invalid,
+			any_chain_invalid_order,
+			client_renegotiation_dos,
+			ccs_injection,
+			early_data_supported,
+			no_perfect_forward_secrecy,
+			sslv2_enabled,
+			sslv3_enabled,
+			tlsv1_0_enabled,
+			tlsv1_1_enabled,
+			export_suite,
+			draft_suite,
+			md2_enabled,
+			md5_enabled,
+			rc4_enabled,
+			sha1_enabled,
+			beast,
+			crime,
+			drown,
+			freak,
+			heartbleed,
+			logjam,
+			lucky_13,
+			poodle,
+			robot,
+			sweet_32,
+
+			t_ssl.scan_started,
+			t_ssl.scan_finished,
+			t_ssl.scan_status,
+			t_ssl.scan_ip,
+			t_ssl.scan_hostname,
+
+			t_discovery_services.service,
+			t_discovery_services.service_product,
+			t_discovery_services.service_version,
+			t_discovery_services.service_device_type,
+			t_discovery_services.service_cpes,
+			t_discovery_services.service_flavor,
+			t_discovery_services.service_ttl,
+
+			t_discovery_services.os_guess,
+			t_discovery_services.os_smb,
+			t_discovery_services.os_last_boot,
+			t_discovery_services.os_uptime,
+			t_discovery_services.os_admin_users,
+			t_discovery_services.os_rdp_users,
+
+			t_discovery_services.asset_company,
+			t_discovery_services.asset_department,
+			t_discovery_services.asset_owner,
+
+			t_discovery_services.input,
+			t_discovery_services.input_size,
+
+			t_discovery_services.timezone,
+			t_discovery_services.lat,
+			t_discovery_services.lng,
+			t_discovery_services.postal_address,
+			t_discovery_services.input_network,
+			t_discovery_services.input_country,
+			t_discovery_services.input_location,
+			t_discovery_services.input_routing_domain,
+			t_discovery_services.input_zone,
+			t_discovery_services.input_purpose,
+			t_discovery_services.input_company,
+			t_discovery_services.input_department,
+			t_discovery_services.input_manager,
+			t_discovery_services.input_contact,
+			t_discovery_services.input_comment,
+			t_discovery_services.ad_name,
+			t_discovery_services.ad_distinguished_name,
+			t_discovery_services.ad_dns_name,
+			t_discovery_services.ad_created,
+			t_discovery_services.ad_last_logon,
+			t_discovery_services.ad_last_password,
+			t_discovery_services.ad_description,
+			t_discovery_services.ad_location,
+			t_discovery_services.ad_managed_by,
+			t_discovery_services.ad_managed_by_gid,
+			t_discovery_services.ad_managed_by_ou,
+			t_discovery_services.ad_os,
+			t_discovery_services.ad_os_version,
+			t_discovery_services.ad_service_principal_name
+		FROM t_ssl_issues
+			LEFT JOIN t_discovery_services ON t_ssl_issues.id_t_discovery_service = t_discovery_services.id
+			LEFT JOIN t_ssl ON t_ssl_issues.id_t_ssl = t_ssl.id;
 	`,
 
 	"webcrawler": `

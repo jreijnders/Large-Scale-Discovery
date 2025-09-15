@@ -1,7 +1,7 @@
 /*
 * Large-Scale Discovery, a network scanning solution for information gathering in large IT/OT network environments.
 *
-* Copyright (c) Siemens AG, 2016-2024.
+* Copyright (c) Siemens AG, 2016-2025.
 *
 * This work is licensed under the terms of the MIT license. For a copy, see the LICENSE file in the top-level
 * directory or visit <https://opensource.org/licenses/MIT>.
@@ -26,6 +26,7 @@ import (
 	"gorm.io/gorm"
 	"gorm.io/gorm/clause"
 	gormlog "gorm.io/gorm/logger"
+	"slices"
 	"strings"
 	"time"
 )
@@ -358,7 +359,7 @@ func UpdateScanAgents(scopeId uint64, scanAgents []T_scan_agent) error {
 		errDb := txManagerDb.
 			Clauses(clause.OnConflict{
 				Columns:   []clause.Column{{Name: "id_t_scan_scope"}, {Name: "name"}, {Name: "host"}},
-				DoUpdates: clause.AssignmentColumns([]string{"ip", "shared", "limits", "last_seen", "tasks", "cpu_rate", "memory_rate", "platform", "platform_family", "platform_version"}), // Unfortunately we can not omit columns
+				DoUpdates: clause.AssignmentColumns([]string{"ip", "shared", "limits", "last_seen", "tasks", "cpu_rate", "memory_rate", "platform", "platform_family", "platform_version", "build_commit", "build_timestamp", "api_version"}), // Unfortunately we can not omit columns
 			}).
 			Create(&agents).Error
 		if errDb != nil {
@@ -671,6 +672,9 @@ func createViewEntry(
 	for k, v := range filters {
 		f[k] = v
 	}
+
+	// Sort views alphabetically
+	slices.Sort(viewTableNames)
 
 	// Prepare new scope view
 	scopeView := T_scope_view{

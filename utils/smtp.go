@@ -1,7 +1,7 @@
 /*
 * Large-Scale Discovery, a network scanning solution for information gathering in large IT/OT network environments.
 *
-* Copyright (c) Siemens AG, 2016-2024.
+* Copyright (c) Siemens AG, 2016-2025.
 *
 * This work is licensed under the terms of the MIT license. For a copy, see the LICENSE file in the top-level
 * directory or visit <https://opensource.org/licenses/MIT>.
@@ -98,7 +98,7 @@ func (s *Smtp) UnmarshalJSON(b []byte) error {
 		var errCert error
 		s.SignatureCert, errCert = os.ReadFile(s.SignatureCertPath)
 		if errCert != nil {
-			return fmt.Errorf("unable to load sender certificate: %s", errCert)
+			return fmt.Errorf("could not load sender certificate: %s", errCert)
 		}
 	}
 
@@ -107,7 +107,7 @@ func (s *Smtp) UnmarshalJSON(b []byte) error {
 		var errKey error
 		s.SignatureKey, errKey = os.ReadFile(s.SignatureKeyPath)
 		if errKey != nil {
-			return fmt.Errorf("unable to load sender key: %s", errKey)
+			return fmt.Errorf("could not load sender key: %s", errKey)
 		}
 	}
 
@@ -116,7 +116,7 @@ func (s *Smtp) UnmarshalJSON(b []byte) error {
 	for _, p := range s.EncryptionCertPaths {
 		cert, errEncCert := os.ReadFile(p)
 		if errEncCert != nil {
-			return fmt.Errorf("unable to load recipient certificate: %s", errEncCert)
+			return fmt.Errorf("could not load recipient certificate: %s", errEncCert)
 		}
 		s.EncryptionCerts = append(s.EncryptionCerts, cert)
 	}

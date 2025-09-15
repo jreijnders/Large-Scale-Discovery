@@ -1,7 +1,7 @@
 /*
 * Large-Scale Discovery, a network scanning solution for information gathering in large IT/OT network environments.
 *
-* Copyright (c) Siemens AG, 2016-2024.
+* Copyright (c) Siemens AG, 2016-2025.
 *
 * This work is licensed under the terms of the MIT license. For a copy, see the LICENSE file in the top-level
 * directory or visit <https://opensource.org/licenses/MIT>.
@@ -10,23 +10,32 @@
 
 package core
 
-import "github.com/siemens/Large-Scale-Discovery/utils"
+import (
+	scanUtils "github.com/siemens/GoScans/utils"
+	"github.com/siemens/Large-Scale-Discovery/utils"
+)
 
-// CompatibilityLevel defines the current compatibility level required between broker and agent. This
+// BrokerApiVersion defines the current compatibility level required between broker and agent. This
 // hardcoded value allows newly built broker versions to exclude older scan agent builds, which might
 // not be compatible with broker-side or agent-side upgrades. If an agent version does not suffice, the
 // broker will return an invalid version error, visible on the agent side to act (log, terminate, etc.).
-const CompatibilityLevel = 2
+var BrokerApiVersion = scanUtils.Version{
+	Major: 1,
+	Minor: 1,
+	Patch: 0,
+}
 
 // AgentInfo contains agent identifying metadata to describe the origin of the request
 // ATTENTION: Do not use this data for security checks, it can be crafted!
 type AgentInfo struct {
-	CompatibilityLevel int    // Agent/Broker compatibility level compiled into the binaries, allowing the broker to reject outdated incompatible agents
-	Name               string // Instance name of the scan agent. There may be multiple scan agents running on the same system (e.g. to target different scan scopes).
-	Host               string // Host used during scanning. Logged by the broker. Decided by scan agent, because only it knows the IP address of it's scanning interface.
-	Ip                 string // Ip address used during scanning. Logged by the broker. Decided by scan agent, because only it knows the IP address of it's scanning interface.
-	Shared             bool   // Whether the agent is serving multiple scan scopes
-	Limits             bool   // Whether the agent has dedicated limits configured in the config
+	BuildCommit    string            // Debug information about the agent executable
+	BuildTimestamp string            // Debug information about the agent executable
+	ApiVersion     scanUtils.Version // API version compiled into the binaries, allowing the broker to reject outdated incompatible agents
+	Name           string            // Instance name of the scan agent. There may be multiple scan agents running on the same system (e.g. to target different scan scopes).
+	Host           string            // Host used during scanning. Logged by the broker. Decided by scan agent, because only it knows the IP address of it's scanning interface.
+	Ip             string            // Ip address used during scanning. Logged by the broker. Decided by scan agent, because only it knows the IP address of it's scanning interface.
+	Shared         bool              // Whether the agent is serving multiple scan scopes
+	Limits         bool              // Whether the agent has dedicated limits configured in the config
 }
 
 // ModuleData contains metadata of a scan module on an agent (e.g. how many of its kind are running,...)

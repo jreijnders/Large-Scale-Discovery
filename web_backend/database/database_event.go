@@ -1,7 +1,7 @@
 /*
 * Large-Scale Discovery, a network scanning solution for information gathering in large IT/OT network environments.
 *
-* Copyright (c) Siemens AG, 2016-2024.
+* Copyright (c) Siemens AG, 2016-2025.
 *
 * This work is licensed under the terms of the MIT license. For a copy, see the LICENSE file in the top-level
 * directory or visit <https://opensource.org/licenses/MIT>.
@@ -26,6 +26,7 @@ const (
 	EventLogin       Event = "Login"
 	EventDbPassword  Event = "Database Password"
 	EventScopeCreate Event = "Scope Created"
+	EventScopeSecret Event = "Scope Secret"
 	EventViewGrant   Event = "User Granted"
 	EventViewToken   Event = "Token Generated"
 	EventDatabaseAdd Event = "Database Added"
@@ -43,7 +44,7 @@ type T_event struct {
 	Event       Event     `gorm:"column:event;not null" json:"event"`
 	EventDetail string    `gorm:"column:event_detail;default:''" json:"event_detail"`
 
-	User *T_user `gorm:"foreignKey:IdTUser;constraint:OnUpdate:CASCADE,OnDelete:SET NULL" json:"user"`
+	User *T_user `gorm:"foreignKey:IdTUser;constraint:OnUpdate:CASCADE,OnDelete:SET NULL" json:"user"` // User must be pointer *T_user, because it can be null OnDelete
 }
 
 // NewEvent creates an event log entry in the database.
@@ -139,7 +140,7 @@ func validEvent(event Event) error {
 
 	// Check whether event type value is valid
 	switch event {
-	case EventLogin, EventDbPassword, EventScopeCreate, EventViewGrant, EventViewToken, EventDatabaseAdd:
+	case EventLogin, EventDbPassword, EventScopeCreate, EventScopeSecret, EventViewGrant, EventViewToken, EventDatabaseAdd:
 		// Ok
 	default:
 		return fmt.Errorf("invalid event type '%s'", event)

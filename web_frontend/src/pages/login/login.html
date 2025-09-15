@@ -2,7 +2,7 @@
     <div style="padding: 3em;">
         <h2 class="ui center aligned header">Large-Scale Discovery</h2>
         <div style="padding-left: 1.3em; padding-right: 1.3em;">
-            <form class="ui form" data-bind="submit: submit">
+            <form class="ui form">
 
                 <div id="divEmail">
                     <div class="field">
@@ -13,7 +13,7 @@
                             <i class="user icon"></i>
                         </div>
                     </div>
-                    <button class="ui labeled icon fluid teal button" type="button" data-bind="click: submitPreAuth">
+                    <button class="ui labeled icon fluid teal button" type="submit" data-bind="click: submit">
                         <i class="sign in icon"></i> Submit
                     </button>
                 </div>
@@ -31,13 +31,9 @@
                     <div class="ui fluid buttons">
                         <button class="ui button" type="button" data-bind="click: cancelLogin">Cancel</button>
                         <div class="or"></div>
-                        <button class="ui teal button" type="button" data-bind="click: submit">Login</button>
-
+                        <button class="ui teal button" type="submit" data-bind="click: submit">Login</button>
                     </div>
                 </div>
-
-                <!-- Trick browser into suggesting previous inputs. Browsers do if there's a submit button -->
-                <button style="display: none;" type="submit"></button>
             </form>
 
             <!-- ko if: credentialsRegistration() || developmentLogin() -->

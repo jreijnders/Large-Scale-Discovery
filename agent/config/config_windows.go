@@ -1,7 +1,7 @@
 /*
 * Large-Scale Discovery, a network scanning solution for information gathering in large IT/OT network environments.
 *
-* Copyright (c) Siemens AG, 2016-2024.
+* Copyright (c) Siemens AG, 2016-2025.
 *
 * This work is licensed under the terms of the MIT license. For a copy, see the LICENSE file in the top-level
 * directory or visit <https://opensource.org/licenses/MIT>.
@@ -48,7 +48,7 @@ var templateModules = Modules{
 		Module: Module{
 			MaxInstances: -1,
 		},
-		LdapServerComment:  "If *no* LDAP server is configured, the respective scan target's domain will be queried. Cross-domain queries might only work with implicit LDAP authentication on Windows.",
+		LdapServerComment:  "If *no* static LDAP server is configured, the target server will be dynamically derived from the discovered target's domain. If no credentials are configured, cross-domain queries might work on domain-joined Windows hosts via implicitly authentication. If credentials are configured, cross-domain queries might work OS and domain membership independent with explicit authentication via GSSAPI.",
 		LdapServer:         "",
 		BlacklistFile:      "",
 		DomainOrderComment: "Sometimes there might be multiple DNS names discovered for a single host. With this grouped and ordered list of domains, you can force them into a deterministic order to promote the most plausible one. E.g. allows to prefer domain.local over domain.com.",
@@ -187,14 +187,14 @@ func (p *Paths) UnmarshalJSON(b []byte) error {
 
 type Authentication struct {
 	Inventories map[string]map[string]string `json:"inventories"` // Flexible configuration construct for asset inventory plugins
-	Ldap        Credentials                  `json:"ldap"`        // Used by Discovery module for AD queries
+	Ldap        CredentialsGssapi            `json:"ldap"`        // Used by Discovery module for AD queries
 	Smb         Credentials                  `json:"smb"`         // Used by SMB module for testing
 	Webcrawler  Credentials                  `json:"webcrawler"`  // Used by webcrawler module for testing
 	Webenum     Credentials                  `json:"webenum"`     // Used by webenum module for testing
 }
 
 type ModuleSmb struct {
-	Module
+	Module Module `json:""` // Exported field
 }
 
 type Modules struct {
@@ -248,21 +248,21 @@ func (m *Modules) UnmarshalJSON(b []byte) error {
 func (m *Modules) ReadMaxInstances(label string) int {
 	switch label {
 	case discovery.Label:
-		return m.Discovery.MaxInstances
+		return m.Discovery.Module.MaxInstances
 	case banner.Label:
-		return m.Banner.MaxInstances
+		return m.Banner.Module.MaxInstances
 	case nfs.Label:
-		return m.Nfs.MaxInstances
+		return m.Nfs.Module.MaxInstances
 	case smb.Label:
-		return m.Smb.MaxInstances
+		return m.Smb.Module.MaxInstances
 	case ssl.Label:
-		return m.Ssl.MaxInstances
+		return m.Ssl.Module.MaxInstances
 	case ssh.Label:
-		return m.Ssh.MaxInstances
+		return m.Ssh.Module.MaxInstances
 	case webcrawler.Label:
-		return m.Webcrawler.MaxInstances
+		return m.Webcrawler.Module.MaxInstances
 	case webenum.Label:
-		return m.Webenum.MaxInstances
+		return m.Webenum.Module.MaxInstances
 	default:
 		return -1 // No limit configured
 	} // Switch End

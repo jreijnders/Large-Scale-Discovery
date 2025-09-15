@@ -66,8 +66,45 @@ define(["knockout", "text!./add.html", "postbox", "jquery", "semantic-ui-dropdow
             // Handle request success
             const callbackSuccess = function (response, textStatus, jqXHR) {
 
-                // Show toast message for user
-                toast(response.message, "success");
+                // Get password if returned by the backend.
+                // It's only returned if it couldn't be sent out via encrypted e-mail.
+                var username = response.body["username"]
+                var password = response.body["password"]
+
+                // Show toast message for successful modal
+                // If username and password are empty, they were sent out by e-mail by the backend.
+                if (username === "" && password === "") {
+                    toast(response.message, "success");
+                } else {
+                    infoOverlay(
+                        "key",
+                        "Generated Access Token",
+                        'Please note the following access token details, they will disappear shortly.</br>\n' +
+                        '<div class="ui sixteen column centered grid">\n' +
+                        '  <div class="ten wide column">\n' +
+                        '       <table class="ui centered inverted black table">\n' +
+                        '         <tbody>\n' +
+                        '           <tr>\n' +
+                        '             <td>Username</td>\n' +
+                        '             <td>' + username + '</td>\n' +
+                        '           </tr>\n' +
+                        '           <tr>\n' +
+                        '             <td>Password</td>\n' +
+                        '             <td>' + password + '</td>\n' +
+                        '           </tr>\n' +
+                        '         </tbody>\n' +
+                        '       </table>\n' +
+                        '  </div>\n' +
+                        '</div>\n',
+                        function () {
+
+                            // Clear credentials after dialog close
+                            password = ""
+                            username = ""
+                        },
+                        20000, // Safety timeout for modal, in case it's showing sensitive data
+                    )
+                }
 
                 // Notify parent to reload updated data
                 ctx.parent.loadData();

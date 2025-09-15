@@ -1,7 +1,7 @@
 /*
 * Large-Scale Discovery, a network scanning solution for information gathering in large IT/OT network environments.
 *
-* Copyright (c) Siemens AG, 2016-2024.
+* Copyright (c) Siemens AG, 2016-2025.
 *
 * This work is licensed under the terms of the MIT license. For a copy, see the LICENSE file in the top-level
 * directory or visit <https://opensource.org/licenses/MIT>.
@@ -177,17 +177,17 @@ define(["knockout", "text!./networks.html", "postbox", "jquery", "semantic-ui-po
     ViewModel.prototype.loadData = function (data, event) {
 
         // Keep reference THIS view model context
-        var parent = this;
+        var ctx = this;
 
         // Handle request success
         const callbackSuccess = function (response, textStatus, jqXHR) {
 
             // Init array of groups
-            parent.groupsAvailable(response.body["groups"]);
+            ctx.groupsAvailable(response.body["groups"]);
 
             // Set scope group, if there is only one
             if (response.body["groups"].length === 1) {
-                parent.groupSelected(response.body["groups"][0].id);
+                ctx.groupSelected(response.body["groups"][0].id);
             }
         };
 

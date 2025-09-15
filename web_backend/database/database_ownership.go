@@ -1,7 +1,7 @@
 /*
 * Large-Scale Discovery, a network scanning solution for information gathering in large IT/OT network environments.
 *
-* Copyright (c) Siemens AG, 2016-2024.
+* Copyright (c) Siemens AG, 2016-2025.
 *
 * This work is licensed under the terms of the MIT license. For a copy, see the LICENSE file in the top-level
 * directory or visit <https://opensource.org/licenses/MIT>.
@@ -18,8 +18,8 @@ type T_ownership struct {
 	IdTGroup uint64 `gorm:"column:id_t_group;type:int;not null;uniqueIndex:idx_group_user"` // SQLITE3 does only support FK via type definition https://github.com/go-gorm/gorm/issues/765 https://www.sqlite.org/foreignkeys.html
 	IdTUser  uint64 `gorm:"column:id_t_user;type:int;not null;uniqueIndex:idx_group_user"`  // SQLITE3 does only support FK via type definition https://github.com/go-gorm/gorm/issues/765 https://www.sqlite.org/foreignkeys.html
 
-	Group *T_group `gorm:"foreignKey:IdTGroup;constraint:OnUpdate:CASCADE,OnDelete:CASCADE" json:"group"`
-	User  *T_user  `gorm:"foreignKey:IdTUser;constraint:OnUpdate:CASCADE,OnDelete:CASCADE" json:"user"`
+	Group T_group `gorm:"foreignKey:IdTGroup" json:"group"`
+	User  T_user  `gorm:"foreignKey:IdTUser" json:"user"`
 }
 
 // Delete an ownership relation

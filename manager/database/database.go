@@ -1,7 +1,7 @@
 /*
 * Large-Scale Discovery, a network scanning solution for information gathering in large IT/OT network environments.
 *
-* Copyright (c) Siemens AG, 2016-2024.
+* Copyright (c) Siemens AG, 2016-2025.
 *
 * This work is licensed under the terms of the MIT license. For a copy, see the LICENSE file in the top-level
 * directory or visit <https://opensource.org/licenses/MIT>.
@@ -32,6 +32,7 @@ import (
 	"gorm.io/gorm"
 	"math/rand"
 	"net"
+	"slices"
 	"strings"
 	"time"
 )
@@ -279,6 +280,17 @@ func XDeploySampleData(logger scanUtils.Logger, scanDefaults T_scan_setting) err
 					Tasks:        tasks,
 					CpuRate:      80,
 					MemoryRate:   63,
+
+					Shared: false,
+					Limits: false,
+
+					Platform:        "Microsoft Windows 10 Enterprise",
+					PlatformFamily:  "Standalone Workstation",
+					PlatformVersion: "10.0.19045.5131 Build 19045.5131",
+
+					BuildCommit:    "3f7f7785fc900f7f09eada4cfea25d9b31910cdc",
+					BuildTimestamp: "2025-05-26T14:50:00+02:00",
+					ApiVersion:     "1.1.0",
 				},
 				{
 					IdTScanScope: scopeEntry.Id,
@@ -289,6 +301,17 @@ func XDeploySampleData(logger scanUtils.Logger, scanDefaults T_scan_setting) err
 					Tasks:        tasks,
 					CpuRate:      62,
 					MemoryRate:   77,
+
+					Shared: false,
+					Limits: false,
+
+					Platform:        "Microsoft Windows 10 Enterprise",
+					PlatformFamily:  "Standalone Workstation",
+					PlatformVersion: "10.0.19045.5131 Build 19045.5131",
+
+					BuildCommit:    "3f7f7785fc900f7f09eada4cfea25d9b31910cdc",
+					BuildTimestamp: "2025-05-26T14:50:00+02:00",
+					ApiVersion:     "1.1.0",
 				},
 				{
 					IdTScanScope: scopeEntry.Id,
@@ -299,6 +322,17 @@ func XDeploySampleData(logger scanUtils.Logger, scanDefaults T_scan_setting) err
 					Tasks:        tasks,
 					CpuRate:      66,
 					MemoryRate:   54,
+
+					Shared: false,
+					Limits: true,
+
+					Platform:        "Microsoft Windows 10 Enterprise",
+					PlatformFamily:  "Standalone Workstation",
+					PlatformVersion: "10.0.19045.5131 Build 19045.5131",
+
+					BuildCommit:    "3f7f7785fc900f7f09eada4cfea25d9b31910cdc",
+					BuildTimestamp: "2025-05-26T14:50:00+02:00",
+					ApiVersion:     "1.1.0",
 				},
 				{
 					IdTScanScope: scopeEntry.Id,
@@ -309,6 +343,17 @@ func XDeploySampleData(logger scanUtils.Logger, scanDefaults T_scan_setting) err
 					Tasks:        tasks,
 					CpuRate:      81,
 					MemoryRate:   61,
+
+					Shared: true,
+					Limits: true,
+
+					Platform:        "Microsoft Windows 10 Enterprise",
+					PlatformFamily:  "Standalone Workstation",
+					PlatformVersion: "10.0.19045.5131 Build 19045.5131",
+
+					BuildCommit:    "3f7f7785fc900f7f09eada4cfea25d9b31910cdc",
+					BuildTimestamp: "2025-05-26T14:50:00+02:00",
+					ApiVersion:     "1.1.0",
 				},
 				{
 					IdTScanScope: scopeEntry.Id,
@@ -319,6 +364,17 @@ func XDeploySampleData(logger scanUtils.Logger, scanDefaults T_scan_setting) err
 					Tasks:        tasks,
 					CpuRate:      98,
 					MemoryRate:   95,
+
+					Shared: true,
+					Limits: false,
+
+					Platform:        "Microsoft Windows 10 Enterprise",
+					PlatformFamily:  "Standalone Workstation",
+					PlatformVersion: "10.0.19045.5131 Build 19045.5131",
+
+					BuildCommit:    "3f7f7785fc900f7f09eada4cfea25d9b31910cdc",
+					BuildTimestamp: "2025-05-26T14:50:00+02:00",
+					ApiVersion:     "1.1.0",
 				},
 				{
 					IdTScanScope: scopeEntry.Id,
@@ -329,6 +385,17 @@ func XDeploySampleData(logger scanUtils.Logger, scanDefaults T_scan_setting) err
 					Tasks:        tasks,
 					CpuRate:      12,
 					MemoryRate:   12,
+
+					Shared: true,
+					Limits: false,
+
+					Platform:        "Microsoft Windows 10 Enterprise",
+					PlatformFamily:  "Standalone Workstation",
+					PlatformVersion: "10.0.19045.5131 Build 19045.5131",
+
+					BuildCommit:    "3f7f7785fc900f7f09eada4cfea25d9b31910cdc",
+					BuildTimestamp: "2025-05-26T14:50:00+02:00",
+					ApiVersion:     "1.1.0",
 				},
 			}
 			managerDb.Create(&[]T_scan_agent{
@@ -501,7 +568,7 @@ func XCreateScope(
 func XDeleteScope(serverDb *gorm.DB, scopeDb *gorm.DB, scanScope *T_scan_scope) error {
 
 	// Takes care of:
-	// 		- removing associated scope views and access rights
+	// 		- removing associated scope views and access rights (managerdb and scopedb)
 	//		- removing scope database from scope db
 	//		- removing scope entry from the manager db
 	//		- removing associated agent entries from the manager db
@@ -566,7 +633,7 @@ func XDeleteScope(serverDb *gorm.DB, scopeDb *gorm.DB, scanScope *T_scan_scope) 
 			return errTxScopeDb
 		}
 
-		// Delete scope's database (can only be done outside of a transaction)
+		// Delete scope's database (can only be done outside a transaction)
 		// ATTENTION: Scope database connections will be killed and have to be committed already!
 		// ATTENTION: Last step, it cannot be rolled back!
 		errDelete4 := deleteScopeDb(serverDb, scanScope.DbName)
@@ -676,9 +743,10 @@ func XCycleScope(logger scanUtils.Logger, scopeDb *gorm.DB, scanScope *T_scan_sc
 				T_smb_file{}, // files before info entry
 				T_smb{},
 				T_ssh{},
-				T_ssl_issue{},       // issues before info entry
 				T_ssl_cipher{},      // ciphers before info entry
 				T_ssl_certificate{}, // certificates before info entry
+				T_ssl_setting{},     // settings before info entry
+				T_ssl_issue{},       // issues before info entry
 				T_ssl{},
 				T_webcrawler_page{},  // pages before vhost and info entry
 				T_webcrawler_vhost{}, // vhost before info entry
@@ -849,6 +917,9 @@ func XUpdateView(scopeDb *gorm.DB, viewEntry *T_scope_view) error {
 					}
 				}
 			}
+
+			// Sort views alphabetically
+			slices.Sort(newViewTableNames)
 
 			// Update view table names
 			viewEntry.ViewNames = strings.Join(newViewTableNames, ",")
@@ -1103,7 +1174,7 @@ func xDeleteView(
 		)
 	}
 
-	// Return nil as evrythign went fine
+	// Return nil as everything went fine
 	return nil
 }
 

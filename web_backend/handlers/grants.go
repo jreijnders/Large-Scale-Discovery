@@ -1,7 +1,7 @@
 /*
 * Large-Scale Discovery, a network scanning solution for information gathering in large IT/OT network environments.
 *
-* Copyright (c) Siemens AG, 2016-2024.
+* Copyright (c) Siemens AG, 2016-2025.
 *
 * This work is licensed under the terms of the MIT license. For a copy, see the LICENSE file in the top-level
 * directory or visit <https://opensource.org/licenses/MIT>.
@@ -52,8 +52,12 @@ var ViewGrantToken = func(smtpConnection *utils.Smtp) gin.HandlerFunc {
 	}
 
 	// Define expected response structure
-	type responseBody struct{}
+	type responseBody struct {
+		Username string `json:"username"` // Only returned if it couldn't be sent via encrypted e-mail
+		Password string `json:"password"` // Only returned if it couldn't be sent via encrypted e-mail
+	}
 
+	// Return request handling function
 	return func(ctx *gin.Context) {
 
 		// Get logger for current request context
@@ -118,35 +122,48 @@ var ViewGrantToken = func(smtpConnection *utils.Smtp) gin.HandlerFunc {
 			return
 		}
 
-		// Prepare mail values
-		subject := fmt.Sprintf("Large-Scale Discovery - Access Token")
-		message := fmt.Sprintf("You generated an access token.\n"+
-			"For details please visit %s.\n\n"+
-			"Access Token Username:\t%s\n"+
-			"Access Token Password:\t%s\n\n"+
-			"Via the web interface, you can:\n"+
-			"   - Revoke access tokens\n"+
-			"   - Request a personal and momentary database password\n"+
-			"   - Find database connection details to access scan results\n"+
-			"   - See the scan progress of a certain scan scope\n",
-			ctx.Request.Host, // Prepare dynamically, website might be accessed via different domains
-			tokenUsername,
-			tokenPassword,
-		)
-
-		// Enable encryption by setting user certificate, if available
-		var encCert [][]byte
-		if len(contextUser.Certificate) > 0 {
-			encCert = [][]byte{contextUser.Certificate}
-		}
+		// Prepare response body
+		msg := ""
+		body := responseBody{}
 
 		// Send access token to user via encrypted e-mail
 		if _build.DevMode {
+
+			// Log action
 			logger.Infof("Skipping user e-mail notification during development.")
-			logger.Infof("Created development access token '%s:%s'.", tokenUsername, tokenPassword)
-		} else {
+			logger.Infof("Generated development access token '%s:%s'.", tokenUsername, tokenPassword)
+
+			// Set response message
+			msg = "Access token generated."
+
+			// Expose new credentials once through web interface in a non-persistent way
+			body.Username = tokenUsername
+			body.Password = tokenPassword
+
+		} else if len(contextUser.Certificate) > 0 {
+
+			// Log action
 			logger.Debugf("Sending new access token to issuer via e-mail.")
-			errMail := smtp.SendMail3(
+
+			// Prepare mail values
+			subject := fmt.Sprintf("Large-Scale Discovery - Access Token")
+			message := fmt.Sprintf("You generated an access token.\n"+
+				"For details please visit %s.\n\n"+
+				"Access Token Username:\t%s\n"+
+				"Access Token Password:\t%s\n\n"+
+				"Via the web interface, you can:\n"+
+				"   - Revoke access tokens\n"+
+				"   - Request a personal and momentary database password\n"+
+				"   - Find database connection details to access scan results\n"+
+				"   - See the scan progress of a certain scan scope\n",
+				ctx.Request.Host, // Prepare dynamically, website might be accessed via different domains
+				tokenUsername,
+				tokenPassword,
+			)
+
+			// Send new token to user via encrypted e-mail
+			encCert := [][]byte{contextUser.Certificate}
+			errMail := smtp.SendMail2(
 				smtpConnection.Server,
 				smtpConnection.Port,
 				smtpConnection.Username,
@@ -154,12 +171,11 @@ var ViewGrantToken = func(smtpConnection *utils.Smtp) gin.HandlerFunc {
 				smtpConnection.Sender,
 				[]mail.Address{{Name: contextUser.Name + " " + contextUser.Surname, Address: contextUser.Email}},
 				subject,
-				message,
+				[]byte(message),
 				smtpConnection.OpensslPath,
 				smtpConnection.SignatureCert,
 				smtpConnection.SignatureKey,
 				encCert,
-				"",
 			)
 			if errMail != nil {
 				logger.Errorf(
@@ -170,6 +186,17 @@ var ViewGrantToken = func(smtpConnection *utils.Smtp) gin.HandlerFunc {
 				core.Respond(ctx, true, "Could not e-mail new access token.", responseBody{})
 				return
 			}
+		} else {
+
+			// Log action
+			logger.Debugf("Returning new access token to issuer via web interface.")
+
+			// Set response message
+			msg = "Access token generated."
+
+			// Expose new credentials once through web interface in a non-persistent way
+			body.Username = tokenUsername
+			body.Password = tokenPassword
 		}
 
 		// Log event
@@ -185,7 +212,7 @@ var ViewGrantToken = func(smtpConnection *utils.Smtp) gin.HandlerFunc {
 		}
 
 		// Return response
-		core.Respond(ctx, false, "Generated new access token.", responseBody{})
+		core.Respond(ctx, false, msg, body)
 	}
 }
 
@@ -202,6 +229,7 @@ var ViewGrantUsers = func(smtpConnection *utils.Smtp) gin.HandlerFunc {
 	// Define expected response structure
 	type responseBody struct{}
 
+	// Return request handling function
 	return func(ctx *gin.Context) {
 
 		// Get logger for current request context
@@ -268,7 +296,7 @@ var ViewGrantUsers = func(smtpConnection *utils.Smtp) gin.HandlerFunc {
 
 			// Check if input is valid e-mail address
 			if !utils.IsPlausibleEmail(userEmail) {
-				core.Respond(ctx, true, "Invalid user.", responseBody{})
+				core.Respond(ctx, true, fmt.Sprintf("Invalid user '%s'.", userEmail), responseBody{})
 				return
 			}
 
@@ -309,10 +337,9 @@ var ViewGrantUsers = func(smtpConnection *utils.Smtp) gin.HandlerFunc {
 					return
 				}
 
-				// If the loader did neither set a password, nor an SSO ID, make the user a credentials type of user,
-				// by setting a (non-functional) password. The user will need to do a password reset to activate
-				// its account.
-				if len(newUser.Password.String) == 0 && len(newUser.SsoId.String) == 0 {
+				// Make user password user, by setting a (non-functional) password, if there is no dedicated
+				// authenticator configured. The user will need to do a password reset to activate its account.
+				if core.EntryUrl(newUser.Email) == "" {
 					newUser.Password = sql.NullString{
 						String: "-",
 						Valid:  true,
@@ -349,7 +376,7 @@ var ViewGrantUsers = func(smtpConnection *utils.Smtp) gin.HandlerFunc {
 					logger.Infof("Skipping user e-mail notification during development.")
 				} else {
 					logger.Debugf("Sending welcome message to new user via e-mail.")
-					errMail := smtp.SendMail3(
+					errMail := smtp.SendMail2(
 						smtpConnection.Server,
 						smtpConnection.Port,
 						smtpConnection.Username,
@@ -357,20 +384,19 @@ var ViewGrantUsers = func(smtpConnection *utils.Smtp) gin.HandlerFunc {
 						smtpConnection.Sender,
 						[]mail.Address{{Name: newUser.Name + " " + newUser.Surname, Address: newUser.Email}},
 						subject,
-						message,
+						[]byte(message),
 						smtpConnection.OpensslPath,
 						smtpConnection.SignatureCert,
 						smtpConnection.SignatureKey,
 						encCert,
-						"",
 					)
 					if errMail != nil {
 						logger.Errorf(
-							"Could not send initial database credentials to user '%s': %s",
+							"Could not send welcome message to user '%s': %s",
 							newUser.Email,
 							errMail,
 						)
-						core.Respond(ctx, true, "Could not e-mail initial database credentials.", responseBody{})
+						core.Respond(ctx, true, "Could not e-mail welcome message.", responseBody{})
 						return
 					}
 				}
@@ -465,6 +491,7 @@ var ViewGrantRevoke = func() gin.HandlerFunc {
 	// Define expected response structure
 	type responseBody struct{}
 
+	// Return request handling function
 	return func(ctx *gin.Context) {
 
 		// Get logger for current request context

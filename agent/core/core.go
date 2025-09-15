@@ -1,7 +1,7 @@
 /*
 * Large-Scale Discovery, a network scanning solution for information gathering in large IT/OT network environments.
 *
-* Copyright (c) Siemens AG, 2016-2024.
+* Copyright (c) Siemens AG, 2016-2025.
 *
 * This work is licensed under the terms of the MIT license. For a copy, see the LICENSE file in the top-level
 * directory or visit <https://opensource.org/licenses/MIT>.
@@ -49,7 +49,7 @@ var instanceIp string
 var instanceHostname string
 
 // Init initializes the agent and all of its parameters
-func Init() error {
+func Init(buildCommit string, buildTimestamp string) error {
 
 	// Get global logger
 	logger := log.GetLogger()
@@ -96,7 +96,7 @@ func Init() error {
 	limits := false
 	v := reflect.ValueOf(conf.Modules)
 	for i := 0; i < v.NumField(); i++ {
-		moduleInstances := v.Field(i).FieldByName("MaxInstances").Interface().(int)
+		moduleInstances := v.Field(i).FieldByName("Module").FieldByName("MaxInstances").Interface().(int)
 		if moduleInstances > 0 {
 			limits = true
 		}
@@ -110,12 +110,14 @@ func Init() error {
 
 	// Prepare agent info data to be sent along with RPC requests to the broker
 	instanceInfo = broker.AgentInfo{
-		CompatibilityLevel: broker.CompatibilityLevel,
-		Name:               instanceName,
-		Host:               instanceHostname,
-		Ip:                 instanceIp,
-		Shared:             shared,
-		Limits:             limits,
+		BuildCommit:    buildCommit,
+		BuildTimestamp: buildTimestamp,
+		ApiVersion:     broker.BrokerApiVersion,
+		Name:           instanceName,
+		Host:           instanceHostname,
+		Ip:             instanceIp,
+		Shared:         shared,
+		Limits:         limits,
 	}
 
 	// Prepare RPC certificate path
@@ -222,6 +224,10 @@ func Shutdown() {
 	})
 }
 
+// loadInstanceName is loading the instance name from the instance file and locking the file to prevent
+// parallel execution. If agent got moved or copied to another location, a fresh agent name will be generated
+// to avoid ambiguity in the web interface.
+// This function makes sure that an agent name is unique and only running once.
 func loadInstanceName() (string, error) {
 
 	// Prepare memory for instance name and origin hash

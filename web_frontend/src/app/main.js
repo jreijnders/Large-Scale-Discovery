@@ -1,7 +1,7 @@
 /*
 * Large-Scale Discovery, a network scanning solution for information gathering in large IT/OT network environments.
 *
-* Copyright (c) Siemens AG, 2016-2024.
+* Copyright (c) Siemens AG, 2016-2025.
 *
 * This work is licensed under the terms of the MIT license. For a copy, see the LICENSE file in the top-level
 * directory or visit <https://opensource.org/licenses/MIT>.
@@ -36,7 +36,6 @@ define(["knockout", "globals", './router', "postbox", "jquery", "hasher", "momen
         ko.components.register("admin-databases", {require: "pages/admin/databases/databases"});
         ko.components.register("admin-logs", {require: "pages/admin/logs/logs"});
         ko.components.register("installation", {require: "pages/installation/installation"});
-        ko.components.register("profile", {require: "pages/profile/profile"});
 
         // Register regular components. While technically equal to pages, components are functional units can be
         // included everywhere. They usually focus on functionality and (e.g.) don't take care of authentication or

@@ -1,7 +1,7 @@
 /*
 * Large-Scale Discovery, a network scanning solution for information gathering in large IT/OT network environments.
 *
-* Copyright (c) Siemens AG, 2016-2024.
+* Copyright (c) Siemens AG, 2016-2025.
 *
 * This work is licensed under the terms of the MIT license. For a copy, see the LICENSE file in the top-level
 * directory or visit <https://opensource.org/licenses/MIT>.
@@ -344,48 +344,6 @@ func (T_ssl) TableName() string {
 	return "t_ssl"
 }
 
-// MaxBatchSizeSslCertificate defines the maximum number T_ssl_certificate instances that can be batched together
-// during an insert. This is calculated dividing 65535 by the number of fields (that are actually written to the db).
-const MaxBatchSizeSslCertificate = 2047 // 65535 (Postgres) / 32
-
-type T_ssl_certificate struct {
-	Id                     uint64       `gorm:"column:id;type:bigint;primaryKey;uniqueIndex"`    // Index recommended on foreign keys for efficient update/delete cascaded actions
-	IdTDiscoveryService    uint64       `gorm:"column:id_t_discovery_service;type:bigint;index"` // Index recommended on foreign keys for efficient update/delete cascaded actions
-	IdTSsl                 uint64       `gorm:"column:id_t_ssl;type:bigint;index"`               // Index recommended on foreign keys for efficient update/delete cascaded actions
-	Vhost                  string       `gorm:"column:vhost;type:text"`
-	DeploymentId           uint64       `gorm:"column:deployment_id"` // Not a primary/foreign key nor an unique identifier!
-	Type                   string       `gorm:"column:type;type:text"`
-	Version                int          `gorm:"column:version"`
-	Serial                 string       `gorm:"column:serial_number;type:text"`
-	ValidChain             bool         `gorm:"column:valid_chain"`
-	ChainValidatedBy       string       `gorm:"column:chain_validated_by;type:text"`
-	ValidChainOrder        bool         `gorm:"column:valid_chain_order"`
-	Subject                string       `gorm:"column:subject;type:text"`
-	SubjectCN              string       `gorm:"column:subject_cn;type:text"`
-	Issuer                 string       `gorm:"column:issuer;type:text"`
-	IssuerCN               string       `gorm:"column:issuer_cn;type:text"`
-	AlternativeNames       string       `gorm:"column:alternative_names;type:text"`
-	ValidFrom              sql.NullTime `gorm:"column:valid_from"`
-	ValidTo                sql.NullTime `gorm:"column:valid_to"`
-	PublicKeyAlgorithm     string       `gorm:"column:public_key_algorithm;type:text"`
-	PublicKeyInfo          string       `gorm:"column:public_key_info;type:text"`
-	PublicKeyBits          uint64       `gorm:"column:public_key_bits"`
-	PublicKeyStrength      int          `gorm:"column:public_key_strength"`
-	SignatureAlgorithm     string       `gorm:"column:signature_algorithm;type:text"`
-	SignatureHashAlgorithm string       `gorm:"column:signature_hash_algorithm;type:text"`
-	CrlUrls                string       `gorm:"column:crl_urls;type:text"`
-	OcspUrls               string       `gorm:"column:ocsp_urls;type:text"`
-	KeyUsage               string       `gorm:"column:key_usage;type:text"`
-	ExtendedKeyUsage       string       `gorm:"column:extended_key_usage;type:text"`
-	BasicConstraintsValid  bool         `gorm:"column:basic_constraints_valid"`
-	Ca                     bool         `gorm:"column:ca"`
-	MaxPathLength          int          `gorm:"column:max_path_length"`
-	Sha1Fingerprint        string       `gorm:"column:sha1_fingerprint;type:text"`
-
-	TDiscoveryService *T_discovery_service `gorm:"foreignKey:IdTDiscoveryService;constraint:OnUpdate:CASCADE,OnDelete:CASCADE"` // Relation struct used for gorm configuration and batch inserts (where it can be used to keep track of the IDs) and to enforce constraints. Can be nil if the ID is set in turn
-	TSsl              *T_ssl               `gorm:"foreignKey:IdTSsl;constraint:OnUpdate:CASCADE,OnDelete:CASCADE"`              // Relation struct used for gorm configuration and batch inserts (where it can be used to keep track of the IDs) and to enforce constraints. Can be nil if the ID is set in turn
-}
-
 // MaxBatchSizeSslCipher defines the maximum number T_ssl_cipher instances that can be batched together
 // during an insert. This is calculated dividing 65535 by the number of fields (that are actually written to the db).
 const MaxBatchSizeSslCipher = 2047 // 65535 (Postgres) / 32
@@ -428,45 +386,106 @@ type T_ssl_cipher struct {
 	TSsl              *T_ssl               `gorm:"foreignKey:IdTSsl;constraint:OnUpdate:CASCADE,OnDelete:CASCADE"`              // Relation struct used for gorm configuration and batch inserts (where it can be used to keep track of the IDs) and to enforce constraints. Can be nil if the ID is set in turn
 }
 
-// MaxBatchSizeSslIssue defines the maximum number T_ssl_issue instances that can be batched together
+// MaxBatchSizeSslCertificate defines the maximum number T_ssl_certificate instances that can be batched together
 // during an insert. This is calculated dividing 65535 by the number of fields (that are actually written to the db).
-const MaxBatchSizeSslIssue = 1985 // 65535 (Postgres) / 33
+const MaxBatchSizeSslCertificate = 2047 // 65535 (Postgres) / 32
 
-type T_ssl_issue struct {
+type T_ssl_certificate struct {
+	Id                     uint64       `gorm:"column:id;type:bigint;primaryKey;uniqueIndex"`    // Index recommended on foreign keys for efficient update/delete cascaded actions
+	IdTDiscoveryService    uint64       `gorm:"column:id_t_discovery_service;type:bigint;index"` // Index recommended on foreign keys for efficient update/delete cascaded actions
+	IdTSsl                 uint64       `gorm:"column:id_t_ssl;type:bigint;index"`               // Index recommended on foreign keys for efficient update/delete cascaded actions
+	Vhost                  string       `gorm:"column:vhost;type:text"`
+	DeploymentId           uint64       `gorm:"column:deployment_id"` // Not a primary/foreign key nor an unique identifier!
+	Type                   string       `gorm:"column:type;type:text"`
+	Version                int          `gorm:"column:version"`
+	Serial                 string       `gorm:"column:serial_number;type:text"`
+	ValidChain             bool         `gorm:"column:valid_chain"`
+	ChainValidatedBy       string       `gorm:"column:chain_validated_by;type:text"`
+	ValidChainOrder        bool         `gorm:"column:valid_chain_order"`
+	Subject                string       `gorm:"column:subject;type:text"`
+	SubjectCN              string       `gorm:"column:subject_cn;type:text"`
+	Issuer                 string       `gorm:"column:issuer;type:text"`
+	IssuerCN               string       `gorm:"column:issuer_cn;type:text"`
+	AlternativeNames       string       `gorm:"column:alternative_names;type:text"`
+	ValidFrom              sql.NullTime `gorm:"column:valid_from"`
+	ValidTo                sql.NullTime `gorm:"column:valid_to"`
+	PublicKeyAlgorithm     string       `gorm:"column:public_key_algorithm;type:text"`
+	PublicKeyInfo          string       `gorm:"column:public_key_info;type:text"`
+	PublicKeyBits          uint64       `gorm:"column:public_key_bits"`
+	PublicKeyStrength      int          `gorm:"column:public_key_strength"`
+	SignatureAlgorithm     string       `gorm:"column:signature_algorithm;type:text"`
+	SignatureHashAlgorithm string       `gorm:"column:signature_hash_algorithm;type:text"`
+	CrlUrls                string       `gorm:"column:crl_urls;type:text"`
+	OcspUrls               string       `gorm:"column:ocsp_urls;type:text"`
+	KeyUsage               string       `gorm:"column:key_usage;type:text"`
+	ExtendedKeyUsage       string       `gorm:"column:extended_key_usage;type:text"`
+	BasicConstraintsValid  bool         `gorm:"column:basic_constraints_valid"`
+	Ca                     bool         `gorm:"column:ca"`
+	MaxPathLength          int          `gorm:"column:max_path_length"`
+	Sha1Fingerprint        string       `gorm:"column:sha1_fingerprint;type:text"`
+
+	TDiscoveryService *T_discovery_service `gorm:"foreignKey:IdTDiscoveryService;constraint:OnUpdate:CASCADE,OnDelete:CASCADE"` // Relation struct used for gorm configuration and batch inserts (where it can be used to keep track of the IDs) and to enforce constraints. Can be nil if the ID is set in turn
+	TSsl              *T_ssl               `gorm:"foreignKey:IdTSsl;constraint:OnUpdate:CASCADE,OnDelete:CASCADE"`              // Relation struct used for gorm configuration and batch inserts (where it can be used to keep track of the IDs) and to enforce constraints. Can be nil if the ID is set in turn
+}
+
+// MaxBatchSizeSslSetting defines the maximum number T_ssl_prevention_measures instances that can be batched together
+// during an insert. This is calculated dividing 65535 by the number of fields (that are actually written to the db).
+const MaxBatchSizeSslSetting = 5461 // 65535 (Postgres) / 12
+
+type T_ssl_setting struct {
 	Id                           uint64 `gorm:"column:id;type:bigint;primaryKey;uniqueIndex"`    // Index recommended on foreign keys for efficient update/delete cascaded actions
 	IdTDiscoveryService          uint64 `gorm:"column:id_t_discovery_service;type:bigint;index"` // Index recommended on foreign keys for efficient update/delete cascaded actions
 	IdTSsl                       uint64 `gorm:"column:id_t_ssl;type:bigint;index"`               // Index recommended on foreign keys for efficient update/delete cascaded actions
 	Vhost                        string `gorm:"column:vhost;type:text"`
-	AnyChainInvalid              bool   `gorm:"column:any_chain_invalid"`
-	AnyChainInvalidOrder         bool   `gorm:"column:any_chain_invalid_order"`
 	LowestProtocol               string `gorm:"column:lowest_protocol;type:text"`
 	MinStrength                  int    `gorm:"column:min_strength"`
-	InsecureRenegotiation        bool   `gorm:"column:insecure_renegotiation"`
-	AcceptsClientRenegotiation   bool   `gorm:"column:accepts_client_renegotiation"`
-	InsecureClientRenegotiation  bool   `gorm:"column:insecure_client_renegotiation"`
+	Ems                          bool   `gorm:"column:ems"`
+	TlsFallbackScsv              bool   `gorm:"column:tls_fallback_scsv"`
+	SecureRenegotiation          bool   `gorm:"column:secure_renegotiation"`
 	SessionResumptionWithId      bool   `gorm:"column:session_resumption_with_id"`
 	SessionResumptionWithTickets bool   `gorm:"column:session_resumption_with_tickets"`
-	NoPerfectForwardSecrecy      bool   `gorm:"column:no_perfect_forward_secrecy"`
-	Compression                  bool   `gorm:"column:compression"`
-	ExportSuite                  bool   `gorm:"column:export_suite"`
-	DraftSuite                   bool   `gorm:"column:draft_suite"`
-	Sslv2Enabled                 bool   `gorm:"column:sslv2_enabled"`
-	Sslv3Enabled                 bool   `gorm:"column:sslv3_enabled"`
-	Rc4Enabled                   bool   `gorm:"column:rc4_enabled"`
-	Md2Enabled                   bool   `gorm:"column:md2_enabled"`
-	Md5Enabled                   bool   `gorm:"column:md5_enabled"`
-	Sha1Enabled                  bool   `gorm:"column:sha1_enabled"`
-	EarlyDataSupported           bool   `gorm:"column:early_data_supported"`
-	CcsInjection                 bool   `gorm:"column:ccs_injection"`
-	Beast                        bool   `gorm:"column:beast"`
-	Heartbleed                   bool   `gorm:"column:heartbleed"`
-	Lucky13                      bool   `gorm:"column:lucky_13"`
-	Poodle                       bool   `gorm:"column:poodle"`
-	Freak                        bool   `gorm:"column:freak"`
-	Logjam                       bool   `gorm:"column:logjam"`
-	Sweet32                      bool   `gorm:"column:sweet_32"`
-	Drown                        bool   `gorm:"column:drown"`
 	IsCompliantToMozillaConfig   bool   `gorm:"column:is_compliant_to_mozilla_config"`
+
+	TDiscoveryService *T_discovery_service `gorm:"foreignKey:IdTDiscoveryService;constraint:OnUpdate:CASCADE,OnDelete:CASCADE"` // Relation struct used for gorm configuration and batch inserts (where it can be used to keep track of the IDs) and to enforce constraints. Can be nil if the ID is set in turn
+	TSsl              *T_ssl               `gorm:"foreignKey:IdTSsl;constraint:OnUpdate:CASCADE,OnDelete:CASCADE"`              // Relation struct used for gorm configuration and batch inserts (where it can be used to keep track of the IDs) and to enforce constraints. Can be nil if the ID is set in turn
+}
+
+// MaxBatchSizeSslIssue defines the maximum number T_ssl_issue instances that can be batched together
+// during an insert. This is calculated dividing 65535 by the number of fields (that are actually written to the db).
+const MaxBatchSizeSslIssue = 2260 // 65535 (Postgres) / 29
+
+type T_ssl_issue struct {
+	Id                      uint64 `gorm:"column:id;type:bigint;primaryKey;uniqueIndex"`    // Index recommended on foreign keys for efficient update/delete cascaded actions
+	IdTDiscoveryService     uint64 `gorm:"column:id_t_discovery_service;type:bigint;index"` // Index recommended on foreign keys for efficient update/delete cascaded actions
+	IdTSsl                  uint64 `gorm:"column:id_t_ssl;type:bigint;index"`               // Index recommended on foreign keys for efficient update/delete cascaded actions
+	Vhost                   string `gorm:"column:vhost;type:text"`
+	LowEncryptionStrength   bool   `gorm:"column:low_encryption_strength"`
+	AnyChainInvalid         bool   `gorm:"column:any_chain_invalid"`
+	AnyChainInvalidOrder    bool   `gorm:"column:any_chain_invalid_order"`
+	ClientRenegotiationDos  bool   `gorm:"column:client_renegotiation_dos"`
+	CcsInjection            bool   `gorm:"column:ccs_injection"`
+	EarlyDataSupported      bool   `gorm:"column:early_data_supported"`
+	NoPerfectForwardSecrecy bool   `gorm:"column:no_perfect_forward_secrecy"`
+	Sslv2Enabled            bool   `gorm:"column:sslv2_enabled"`
+	Sslv3Enabled            bool   `gorm:"column:sslv3_enabled"`
+	Tlsv1_0Enabled          bool   `gorm:"column:tlsv1_0_enabled"`
+	Tlsv1_1Enabled          bool   `gorm:"column:tlsv1_1_enabled"`
+	ExportSuite             bool   `gorm:"column:export_suite"`
+	DraftSuite              bool   `gorm:"column:draft_suite"`
+	Md2Enabled              bool   `gorm:"column:md2_enabled"`
+	Md5Enabled              bool   `gorm:"column:md5_enabled"`
+	Rc4Enabled              bool   `gorm:"column:rc4_enabled"`
+	Sha1Enabled             bool   `gorm:"column:sha1_enabled"`
+	Beast                   bool   `gorm:"column:beast"`
+	Crime                   bool   `gorm:"column:crime"`
+	Drown                   bool   `gorm:"column:drown"`
+	Freak                   bool   `gorm:"column:freak"`
+	Heartbleed              bool   `gorm:"column:heartbleed"`
+	Logjam                  bool   `gorm:"column:logjam"`
+	Lucky13                 bool   `gorm:"column:lucky_13"`
+	Poodle                  bool   `gorm:"column:poodle"`
+	Robot                   bool   `gorm:"column:robot"`
+	Sweet32                 bool   `gorm:"column:sweet_32"`
 
 	TDiscoveryService *T_discovery_service `gorm:"foreignKey:IdTDiscoveryService;constraint:OnUpdate:CASCADE,OnDelete:CASCADE"` // Relation struct used for gorm configuration and batch inserts (where it can be used to keep track of the IDs) and to enforce constraints. Can be nil if the ID is set in turn
 	TSsl              *T_ssl               `gorm:"foreignKey:IdTSsl;constraint:OnUpdate:CASCADE,OnDelete:CASCADE"`              // Relation struct used for gorm configuration and batch inserts (where it can be used to keep track of the IDs) and to enforce constraints. Can be nil if the ID is set in turn

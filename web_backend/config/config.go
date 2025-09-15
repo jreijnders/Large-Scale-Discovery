@@ -1,7 +1,7 @@
 /*
 * Large-Scale Discovery, a network scanning solution for information gathering in large IT/OT network environments.
 *
-* Copyright (c) Siemens AG, 2016-2024.
+* Copyright (c) Siemens AG, 2016-2025.
 *
 * This work is licensed under the terms of the MIT license. For a copy, see the LICENSE file in the top-level
 * directory or visit <https://opensource.org/licenses/MIT>.
@@ -26,6 +26,10 @@ import (
 
 var webConfig = &WebConfig{} // Global configuration
 var webConfigLock sync.Mutex // Lock required to avoid simultaneous requesting/updating of config
+
+var templatePaths = Paths{
+	Nmap: "",
+}
 
 // Init initializes the configuration module and loads a JSON configuration. If JSON is not existing, a default
 // configuration will be generated.
@@ -217,6 +221,7 @@ func defaultWebConfigFactory() WebConfig {
 			"ldap_timeout_seconds":  float64(5), // will be float after loading from JSON. Must be float for unit test to succeed.
 		},
 		Logging: logging,
+		Paths:   templatePaths,
 	}
 
 	// Return generated config
@@ -234,6 +239,7 @@ type WebConfig struct {
 	ListenAddressHttps string                 `json:"listen_address_https"` // Leave empty to disable TLS endpoint
 	ListenAddressHttp  string                 `json:"listen_address_http"`  // Leave empty to disable unencrypted endpoint. Encrypted endpoint be used, unless a TLS load balancer is in front.
 	FrontendLinks      map[string][]Link      `json:"frontend_links"`
+	Paths              Paths                  `json:"paths"`
 	Jwt                Jwt                    `json:"jwt"`
 	Logging            log.Settings           `json:"logging"`
 	Authenticator      map[string]interface{} `json:"authenticator"` // Arbitrary arguments passed to authenticators. Flexible for own authenticator integrations.
@@ -294,6 +300,65 @@ func (j *Jwt) UnmarshalJSON(b []byte) error {
 	// Set unserializable values
 	j.Expiry = time.Duration(raw.ExpiryMinutes) * time.Minute
 	j.Refresh = time.Duration(raw.RefreshMinutes) * time.Minute
+
+	// Return nil as everything is valid
+	return nil
+}
+
+type Paths struct {
+	// Paths to executables, e.g. of third party tools. Use complete paths to executables to avoid cross-platform
+	// issues. E.g. on Linux the Python executable files might have different names (python, python3.7, python3.8)
+	NmapDir string `json:"-"`
+	Nmap    string `json:"nmap"` // If Nmap path is configured, the web backend will validate Nmap args using Nmap's Dry Run feature
+}
+
+func (p *Paths) UnmarshalJSON(b []byte) error {
+
+	// Prepare temporary auxiliary data structure to load raw Json data
+	type aux Paths
+	var raw aux
+
+	// Unmarshal serialized Json into temporary auxiliary structure
+	err := json.Unmarshal(b, &raw)
+	if err != nil {
+		return err
+	}
+
+	// Check if paths are set
+	if raw.Nmap != "" {
+		// Convert the paths to an absolute ones if necessary
+		nmap := raw.Nmap
+		if !filepath.IsAbs(nmap) {
+			var errAbs error
+			nmap, errAbs = filepath.Abs(nmap)
+			if errAbs != nil {
+				return errAbs
+			}
+		}
+
+		// Do input validation
+		errNmap := scanUtils.IsValidExecutable(nmap, "-h") // args required
+		if errNmap != nil {
+			return errNmap
+		}
+
+		// Calculate Nmap dir
+		nmapDir := filepath.Dir(nmap)
+		errNmapDir := scanUtils.IsValidFolder(nmapDir)
+		if errNmapDir != nil {
+			return errNmapDir
+		}
+		// Copy loaded Json values to actual config
+		*p = Paths{
+			NmapDir: nmapDir,
+			Nmap:    nmap,
+		}
+	} else {
+		*p = Paths{
+			NmapDir: "",
+			Nmap:    "",
+		}
+	}
 
 	// Return nil as everything is valid
 	return nil

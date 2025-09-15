@@ -1,7 +1,7 @@
 /*
 * Large-Scale Discovery, a network scanning solution for information gathering in large IT/OT network environments.
 *
-* Copyright (c) Siemens AG, 2016-2024.
+* Copyright (c) Siemens AG, 2016-2025.
 *
 * This work is licensed under the terms of the MIT license. For a copy, see the LICENSE file in the top-level
 * directory or visit <https://opensource.org/licenses/MIT>.
@@ -31,10 +31,13 @@ func UpdateAgent(
 	scopeId uint64, // Associating the scan agent to a scan scope
 	moduleData map[string]int,
 	systemData utils.SystemData,
+	buildCommit string,
+	buildTimestamp string,
+	apiVersion string,
 ) {
 
 	// Generate agent identifier from agent information
-	identifier := buildIdentifier(agentName, agentHost, "", scopeId) // Don't use IP for identification as it might be a dynamic one
+	identifier := buildIdentifier(agentName, agentHost, agentIp, scopeId)
 
 	// Convert tasks map to json data
 	tasks := make(map[string]interface{}, len(moduleData))
@@ -57,6 +60,9 @@ func UpdateAgent(
 		Platform:        systemData.Platform,
 		PlatformFamily:  systemData.PlatformFamily,
 		PlatformVersion: systemData.PlatformVersion,
+		BuildCommit:     buildCommit,
+		BuildTimestamp:  buildTimestamp,
+		ApiVersion:      apiVersion,
 	})
 }
 
@@ -65,7 +71,7 @@ func UpdateAgent(
 func RemoveAgent(agentName string, agentHost string, agentIp string, scopeId uint64) {
 
 	// Generate agent identifier from agent information
-	identifier := buildIdentifier(agentName, agentHost, "", scopeId) // Don't use IP for identification as it might be a dynamic one
+	identifier := buildIdentifier(agentName, agentHost, agentIp, scopeId)
 
 	// Remove entry
 	agents.Remove(identifier)
@@ -90,5 +96,7 @@ func GetAgents() map[string]managerdb.T_scan_agent {
 }
 
 func buildIdentifier(agentName string, agentHost string, agentIp string, scopeId uint64) string {
-	return fmt.Sprintf("%s-%s-%s-%d", agentName, agentHost, agentIp, scopeId) // Differentiate by scopeId, because a scan agent can process multiple scan scopes
+	// Differentiate by scopeId, because a scan agent can process multiple scan scopes.
+	// Don't use IP for identification as agent might be hosted on a dynamic one.
+	return fmt.Sprintf("%s-%s-%d", agentName, agentHost, scopeId)
 }

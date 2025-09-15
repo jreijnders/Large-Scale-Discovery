@@ -3,9 +3,6 @@
 .idea/dataSources.xml
 /.idea/GitlabLint.xml
 
-# CI/CD scripts
-.gitlab-ci.yml
-
 # Unit test output
 _test/
 

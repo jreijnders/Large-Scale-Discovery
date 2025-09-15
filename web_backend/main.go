@@ -1,7 +1,7 @@
 /*
 * Large-Scale Discovery, a network scanning solution for information gathering in large IT/OT network environments.
 *
-* Copyright (c) Siemens AG, 2016-2024.
+* Copyright (c) Siemens AG, 2016-2025.
 *
 * This work is licensed under the terms of the MIT license. For a copy, see the LICENSE file in the top-level
 * directory or visit <https://opensource.org/licenses/MIT>.
@@ -11,7 +11,9 @@
 package main
 
 import (
+	"flag"
 	"fmt"
+	scanUtils "github.com/siemens/GoScans/utils"
 	"github.com/siemens/Large-Scale-Discovery/_build"
 	"github.com/siemens/Large-Scale-Discovery/log"
 	"github.com/siemens/Large-Scale-Discovery/utils"
@@ -19,8 +21,16 @@ import (
 	"github.com/siemens/Large-Scale-Discovery/web_backend/core"
 	"github.com/siemens/Large-Scale-Discovery/web_backend/database"
 	"github.com/siemens/Large-Scale-Discovery/web_backend/handlers"
+	"runtime"
+	"strings"
 	"time"
 )
+
+// Build information accessible via -version
+var buildGitCommit = "dev12345"                       // Git commit hash identifying the version of this scan agent. Injected by the build command.
+var buildTimestamp = "0001-01-01T00:00:00+00:00"      // Timestamp when this agent was built. Injected by the build command.
+var buildGoVersion = runtime.Version()                // Golang version used during building of the agent.
+var buildGoArch = runtime.GOOS + "/" + runtime.GOARCH // Golang version used during building of the agent.
 
 // main application entry point
 func main() {
@@ -33,6 +43,18 @@ func main() {
 
 	// We paid Gracy, let her execute nevertheless (e.g. if in case of panic rather than interrupt)
 	defer gracy.Shutdown()
+
+	// Declare command line arguments
+	versionFlag := flag.Bool("version", false, "Prints build information.")
+
+	// Parse command line arguments
+	flag.Parse()
+
+	// Print version information
+	if *versionFlag {
+		fmt.Println(fmt.Sprintf("Backend:\n%s", "\t"+strings.Join(buildInfo(), "\n\t")))
+		return
+	}
 
 	// Initialize configuration
 	errConf := config.Init("backend.conf")
@@ -59,18 +81,24 @@ func main() {
 		}
 	})
 
+	// Log potential panics before letting them move on
+	defer func() {
+		if r := recover(); r != nil {
+			logger.Errorf(fmt.Sprintf("Panic: %s%s", r, scanUtils.StacktraceIndented("\t")))
+			panic(r)
+		}
+	}()
+
 	// Make backend print final message on exit
 	gracy.Register(func() {
 		time.Sleep(time.Microsecond) // Make sure this message is written last, in case of race condition
 		logger.Debugf("Backend terminated.")
 	})
 
-	// Catch potential panics to gracefully log issue
-	gracy.Register(func() {
-		if r := recover(); r != nil {
-			logger.Errorf("Panic: %s", r)
-		}
-	})
+	// Log binary information
+	for _, info := range buildInfo() {
+		logger.Debugf("%s", info)
+	}
 
 	// Make sure core gets shut down gracefully
 	gracy.Register(core.Shutdown)
@@ -83,9 +111,9 @@ func main() {
 	}
 
 	// Initialize RPC connection to manager
-	errInitManager := core.InitManager()
-	if errInitManager != nil {
-		logger.Errorf("Could not initialize connection: %s", errInitManager)
+	errConnectManager := core.ConnectManager()
+	if errConnectManager != nil {
+		logger.Errorf("Could not initialize connection: %s", errConnectManager)
 		return
 	}
 
@@ -133,7 +161,7 @@ func registerApiEndpointsV1(smtpConfig *utils.Smtp) {
 
 	core.RegisterApiEndpoint(v, "GET", "/users", handlers.Users())              // Returns list of already registered users. All for administrators, a filtered/restricted list for other users
 	core.RegisterApiEndpoint(v, "GET", "/user/details", handlers.UserDetails()) // Returns the current user's details
-	core.RegisterApiEndpoint(v, "POST", "/user/reset", handlers.UserResetDbPassword(smtpConfig))
+	core.RegisterApiEndpoint(v, "POST", "/user/password", handlers.UserResetDbPassword(smtpConfig))
 	core.RegisterApiEndpoint(v, "POST", "/user/feedback", handlers.UserFeedback(smtpConfig))
 
 	core.RegisterApiEndpoint(v, "GET", "/groups", handlers.Groups()) // Returns a list of groups the user is owner of (all in case of admin)
@@ -178,4 +206,13 @@ func registerApiEndpointsV1(smtpConfig *utils.Smtp) {
 	core.RegisterApiEndpointAdmin(v, "GET", "/admin/databases", handlers.Databases())
 	core.RegisterApiEndpointAdmin(v, "POST", "/admin/database/update", handlers.DatabaseAddUpdate())
 	core.RegisterApiEndpointAdmin(v, "POST", "/admin/database/remove", handlers.DatabaseRemove())
+}
+
+func buildInfo() []string {
+	return []string{
+		fmt.Sprintf("Build Timestamp   : %s", buildTimestamp),
+		fmt.Sprintf("Build GIT Commit  : %s", buildGitCommit[:8]),
+		fmt.Sprintf("Build Go Version  : %s", buildGoVersion),
+		fmt.Sprintf("Build OS/Arch     : %s", buildGoArch),
+	}
 }

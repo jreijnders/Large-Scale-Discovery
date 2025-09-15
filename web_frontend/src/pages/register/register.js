@@ -1,7 +1,7 @@
 /*
 * Large-Scale Discovery, a network scanning solution for information gathering in large IT/OT network environments.
 *
-* Copyright (c) Siemens AG, 2016-2024.
+* Copyright (c) Siemens AG, 2016-2025.
 *
 * This work is licensed under the terms of the MIT license. For a copy, see the LICENSE file in the top-level
 * directory or visit <https://opensource.org/licenses/MIT>.
@@ -53,7 +53,7 @@ define(["knockout", "text!./register.html", "postbox", "jquery", "semantic-ui-mo
         ViewModel.prototype.submitRegister = function (data, event) {
 
             // Keep reference THIS view model context
-            var parent = this;
+            var ctx = this;
 
             // Validate form
             if (!this.$domForm.form('is valid')) {
@@ -64,11 +64,11 @@ define(["knockout", "text!./register.html", "postbox", "jquery", "semantic-ui-mo
 
             // Handle request error
             const callbackError = function (response, textStatus, jqXHR) {
-                parent.$domForm.form("add prompt", "inputEmail", "Invalid E-Mail");
+                ctx.$domForm.form("add prompt", "inputEmail", "Invalid E-Mail");
                 if (!developmentLogin()) {
-                    parent.$domForm.form("add prompt", "inputPassword", "Invalid Password");
+                    ctx.$domForm.form("add prompt", "inputPassword", "Invalid Password");
                 }
-                parent.$domForm.each(shake);
+                ctx.$domForm.each(shake);
             };
 
             // Handle request success
@@ -81,10 +81,10 @@ define(["knockout", "text!./register.html", "postbox", "jquery", "semantic-ui-mo
                 postbox.publish("redirect", "login");
 
                 // Reset form
-                parent.$domForm.form("reset");
+                ctx.$domForm.form("reset");
 
                 // Hide modal
-                parent.$domModal.modal('hide');
+                ctx.$domModal.modal('hide');
             };
 
             // Prepare request body

@@ -1,7 +1,7 @@
 /*
 * Large-Scale Discovery, a network scanning solution for information gathering in large IT/OT network environments.
 *
-* Copyright (c) Siemens AG, 2016-2024.
+* Copyright (c) Siemens AG, 2016-2025.
 *
 * This work is licensed under the terms of the MIT license. For a copy, see the LICENSE file in the top-level
 * directory or visit <https://opensource.org/licenses/MIT>.
@@ -153,7 +153,7 @@ func cleanMemory(logger scanUtils.Logger, notification manager.ReplyNotification
 		}
 	}
 
-	// Clean scan agent stats of expired scan scopes from memory
+	// Clean scan agent stats of removed scan scopes from memory
 	for _, agentStat := range memory.GetAgents() {
 		if !utils.Uint64Contained(agentStat.IdTScanScope, notification.RemainingScopeIds) {
 			memory.RemoveAgent(agentStat.Name, agentStat.Host, "", agentStat.IdTScanScope) // Don't use IP for identification as it might be a dynamic one
@@ -344,7 +344,8 @@ func submitStats(logger scanUtils.Logger) {
 		agentStats := memory.GetAgents()
 
 		// Clear memory so that new entries can accumulate already for the next execution
-		// and to minimize possible race conditions of agent requests between GetAgents() and ClearAgents()
+		// and to minimize possible race conditions of agent requests between GetAgents() and ClearAgents().
+		// Memory needs to be cleared to avoid sending stats for old outdated scan agents that don't exist anymore.
 		memory.ClearAgents()
 
 		// Group scan agent stats by scan scope ID

@@ -1,7 +1,7 @@
 /*
 * Large-Scale Discovery, a network scanning solution for information gathering in large IT/OT network environments.
 *
-* Copyright (c) Siemens AG, 2016-2024.
+* Copyright (c) Siemens AG, 2016-2025.
 *
 * This work is licensed under the terms of the MIT license. For a copy, see the LICENSE file in the top-level
 * directory or visit <https://opensource.org/licenses/MIT>.
@@ -217,14 +217,19 @@ function NavItem(title, href, target) {
     this.target = target;
 }
 
-function toast(message, messageClass, errIcon) {
+function toast(message, messageClass, errIcon, displayTime) {
+    var t = 3000
+    if (displayTime !== undefined) {
+        t = displayTime
+    }
     $('body').toast({
         message: message,
         class: messageClass,
         showIcon: errIcon ? errIcon : false,
         position: 'bottom right',
         showProgress: 'bottom',
-        progressUp: true
+        progressUp: true,
+        displayTime: t
     });
 }
 
@@ -255,9 +260,7 @@ function confirmOverlay(icon, title, messasge, fnAction, confirmWord, fnDeny) {
                 <i class="' + icon + ' icon"></i>' + title + ' \
             </div> \
             <div class="content" style="text-align: center"> \
-                <p> \
-                    ' + messasge + ' \
-                </p> \
+                <p>' + messasge + '</p> \
                 ' + inputHtml + ' \
             </div> \
             <div class="actions"> \
@@ -306,6 +309,60 @@ function confirmOverlay(icon, title, messasge, fnAction, confirmWord, fnDeny) {
             $modal.remove(); // Remove modal again after use
         },
     }).modal('show');
+}
+
+function infoOverlay(icon, title, messasge, fnDoneAction, fnDoneTimeout) {
+
+    // Define modal HTML
+    var modalHtml = ' \
+        <div class="ui tiny basic test modal front transition" style="display: block !important;"> \
+            <div class="ui icon header"> \
+                <i class="' + icon + ' icon"></i>' + title + ' \
+            </div> \
+            <div class="content" style="text-align: center"><p>' + messasge + '</p></div> \
+            <div class="actions"> \
+                <button class="ui basic ok inverted button"> \
+                    <i class="checkmark icon"></i> \
+                    Done \
+                </button> \
+            </div> \
+        </div> \
+    ';
+
+    // Define modal
+    var $modal = $(modalHtml);
+
+    // Inject modal
+    $('body').append($modal);
+
+    // Prepare flag for done status
+    var done = false
+
+    // Show modal
+    $modal.modal({
+        onDeny: function ($element) {
+            return true
+        },
+        onApprove: function ($element) {
+            return true
+        },
+        onHidden: function () {
+            fnDoneAction();
+            $modal.remove(); // Remove modal again after use
+            done = true
+        },
+    }).modal('show');
+
+    // Close automatically
+    if (fnDoneTimeout !== undefined) {
+        setTimeout(() => {
+            if (done === false) {
+                toast("Sensitive modal closed automatically.", "teal");
+                $modal.modal('hide')
+            }
+            done = true
+        }, fnDoneTimeout);
+    }
 }
 
 function isIpV4OrSubnet(value) {

@@ -1,7 +1,7 @@
 /*
 * Large-Scale Discovery, a network scanning solution for information gathering in large IT/OT network environments.
 *
-* Copyright (c) Siemens AG, 2016-2024.
+* Copyright (c) Siemens AG, 2016-2025.
 *
 * This work is licensed under the terms of the MIT license. For a copy, see the LICENSE file in the top-level
 * directory or visit <https://opensource.org/licenses/MIT>.
@@ -57,6 +57,12 @@ define(["knockout", "text!./agents.html", "postbox", "jquery", "avatars-bottts",
                     ctx.agentStats([])
                 }
 
+                // Sort scope list by name naturally
+                data.sort((a, b) => a.scope_name.localeCompare(b.scope_name, navigator.languages[0] || navigator.language, {
+                    numeric: true,
+                    ignorePunctuation: false
+                }));
+
                 // Sanitize values
                 data.forEach(function (value, index, array) {
 
@@ -65,7 +71,7 @@ define(["knockout", "text!./agents.html", "postbox", "jquery", "avatars-bottts",
                         value["agents"] = []
                     }
 
-                    // Sort list by name naturally
+                    // Sort agent list by name naturally
                     value["agents"].sort((a, b) => a.host.localeCompare(b.host, navigator.languages[0] || navigator.language, {
                         numeric: true,
                         ignorePunctuation: false
@@ -201,6 +207,7 @@ define(["knockout", "text!./agents.html", "postbox", "jquery", "avatars-bottts",
             // Initialize tasks popup
             if (data.tasks) {
                 $(element).find(".image").popup({
+                    hoverable: true,
                     inline: true,
                     position: 'left center',
                     forcePosition: true,
@@ -234,7 +241,7 @@ define(["knockout", "text!./agents.html", "postbox", "jquery", "avatars-bottts",
             confirmOverlay(
                 "mask",
                 "Delete Scan Agent",
-                "This will delete this scan agent's stats until new activity is observed. <br />Are you sure you want to delete scan agent stats of </br><span class=\"ui red text\">'" + data.name + "'</span></br> from</br>  <span class=\"ui red text\">'" + scopeName + "'</span>?",
+                "This will remove the scan agent's status until new activity is observed.",
                 function () {
 
                     // Handle request success

@@ -1,7 +1,7 @@
 /*
 * Large-Scale Discovery, a network scanning solution for information gathering in large IT/OT network environments.
 *
-* Copyright (c) Siemens AG, 2016-2024.
+* Copyright (c) Siemens AG, 2016-2025.
 *
 * This work is licensed under the terms of the MIT license. For a copy, see the LICENSE file in the top-level
 * directory or visit <https://opensource.org/licenses/MIT>.
@@ -318,15 +318,16 @@ func checkCycle(logger scanUtils.Logger, scanScope *managerdb.T_scan_scope) (ini
 	// Check if there is anything in this scope yet
 	var contentCount int64
 	errDb := scopeDb.Model(&managerdb.T_discovery{}).
+		Where("enabled = ?", true).
 		Limit(1). // Fastest way to find out if there is something in the table
 		Count(&contentCount).Error
 	if errDb != nil {
-		return false, fmt.Errorf("could not count total targets in scope db: %s", errDb)
+		return false, fmt.Errorf("could not count enabled targets in scope db: %s", errDb)
 	}
 
 	// Skip initialization if there is nothing to initialize
 	if contentCount == 0 {
-		logger.Debugf("Current scan cycle has no '%s' scan targets yet.", discovery.Label)
+		logger.Debugf("Current scan cycle has no enabled '%s' scan targets yet.", discovery.Label)
 		return false, nil
 	}
 

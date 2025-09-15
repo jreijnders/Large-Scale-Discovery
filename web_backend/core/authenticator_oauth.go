@@ -1,7 +1,7 @@
 /*
 * Large-Scale Discovery, a network scanning solution for information gathering in large IT/OT network environments.
 *
-* Copyright (c) Siemens AG, 2016-2024.
+* Copyright (c) Siemens AG, 2016-2025.
 *
 * This work is licensed under the terms of the MIT license. For a copy, see the LICENSE file in the top-level
 * directory or visit <https://opensource.org/licenses/MIT>.
@@ -13,7 +13,6 @@ package core
 import (
 	"context"
 	"crypto/rand"
-	"database/sql"
 	"encoding/base64"
 	"encoding/json"
 	"fmt"
@@ -583,19 +582,6 @@ func (a *AuthenticatorOauth) login() gin.HandlerFunc {
 			}
 		}
 
-		// Try to generate fallback company from email address if possible
-		if userCompany == "" {
-
-			// Check if domain of user mail is within scope of this authenticator
-			// Otherwise, don't select the domain, because it might be something global (gmail.com, outlook.com,...)
-			// and we don't want to leak e-mail addresses. Users of the same company can see each other in the web
-			// interface!
-			domain := strings.SplitN(userEmail, "@", 2)[1]
-			if scanUtils.StrContained("@"+domain, a.domains) {
-				userCompany = domain
-			}
-		}
-
 		// Check if received email address is plausible
 		if !utils.IsPlausibleEmail(userEmail) {
 			logger.Warningf("Could not authenticate invalid email address '%s'.", userEmail)
@@ -612,6 +598,22 @@ func (a *AuthenticatorOauth) login() gin.HandlerFunc {
 			logger.Errorf("Oauth %s.", errAuthenticator)
 			ctx.Redirect(http.StatusTemporaryRedirect, authErrRedirect)
 			return
+		}
+
+		// Extract domain from email
+		domain := strings.SplitN(userEmail, "@", 2)[1]
+
+		// Users of the same company can see each other in the web interface, and we don't want to leak e-mail
+		// addresses of other companies!
+		// 	- Use the company name returned by the trusted identity service provider
+		// 	- Use the user's email domain as a company name, if it falls within the scope of this authenticator.
+		//  - Use the user's email as the company name to isolate it in its own group, since no company name is known.
+		if userCompany != "" {
+			// Keep value returned by identity provider
+		} else if scanUtils.StrContained("@"+domain, a.domains) {
+			userCompany = domain
+		} else {
+			userCompany = userEmail
 		}
 
 		// Query for user with given email address
@@ -634,8 +636,14 @@ func (a *AuthenticatorOauth) login() gin.HandlerFunc {
 			// Take user from query result
 			user = userEntry
 
+			// Update values from SSO provider (might be overridden below by loader)
+			user.Name = userName
+			user.Surname = userSurname
+			user.Company = userCompany
+			user.Department = userDepartment
+
 			// Check if user can authenticate via oauth
-			if len(user.SsoId.String) == 0 || len(user.Password.String) != 0 {
+			if len(user.Password.String) != 0 {
 				logger.Debugf("User not an oauth user.")
 				ctx.Redirect(http.StatusTemporaryRedirect, authErrRedirect)
 				return
@@ -643,11 +651,8 @@ func (a *AuthenticatorOauth) login() gin.HandlerFunc {
 		} else {
 
 			// Generate new oauth user
+			// Empty password indicates alternative auth method, such as oAuth
 			user = database.NewUser(userEmail, userCompany, userDepartment, userName, userSurname)
-			user.SsoId = sql.NullString{ // Set something, just in case the loader subsequently doesn't
-				String: userEmail,
-				Valid:  true,
-			}
 		}
 
 		// Get appropriate loader

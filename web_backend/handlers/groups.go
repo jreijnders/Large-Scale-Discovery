@@ -1,7 +1,7 @@
 /*
 * Large-Scale Discovery, a network scanning solution for information gathering in large IT/OT network environments.
 *
-* Copyright (c) Siemens AG, 2016-2024.
+* Copyright (c) Siemens AG, 2016-2025.
 *
 * This work is licensed under the terms of the MIT license. For a copy, see the LICENSE file in the top-level
 * directory or visit <https://opensource.org/licenses/MIT>.
@@ -79,7 +79,7 @@ var Groups = func() gin.HandlerFunc {
 	}
 }
 
-// GroupCreate creates a user group, if the requesting user has has admin rights
+// GroupCreate creates a user group, if the requesting user has admin rights
 var GroupCreate = func() gin.HandlerFunc {
 
 	// Define expected request structure
@@ -510,10 +510,9 @@ var GroupAssign = func(smtpConnection *utils.Smtp) gin.HandlerFunc {
 					return
 				}
 
-				// If the loader did neither set a password, nor a SSO ID, make the user a credentials type of user,
-				// by setting a (non-functional) password. The user will need to do a password reset to activate
-				// its account.
-				if len(newUser.Password.String) == 0 && len(newUser.SsoId.String) == 0 {
+				// Make user password user, by setting a (non-functional) password, if there is no dedicated
+				// authenticator configured. The user will need to do a password reset to activate its account.
+				if core.EntryUrl(newUser.Email) == "" {
 					newUser.Password = sql.NullString{
 						String: "-",
 						Valid:  true,
@@ -552,7 +551,7 @@ var GroupAssign = func(smtpConnection *utils.Smtp) gin.HandlerFunc {
 					logger.Infof("Skipping user e-mail notification during development.")
 				} else {
 					logger.Debugf("Sending scope ownership notification to user via e-mail.")
-					errMail := smtp.SendMail3(
+					errMail := smtp.SendMail2(
 						smtpConnection.Server,
 						smtpConnection.Port,
 						smtpConnection.Username,
@@ -560,20 +559,19 @@ var GroupAssign = func(smtpConnection *utils.Smtp) gin.HandlerFunc {
 						smtpConnection.Sender,
 						[]mail.Address{{Name: newUser.Name + " " + newUser.Surname, Address: newUser.Email}},
 						subject,
-						message,
+						[]byte(message),
 						smtpConnection.OpensslPath,
 						smtpConnection.SignatureCert,
 						smtpConnection.SignatureKey,
 						encCert,
-						"",
 					)
 					if errMail != nil {
 						logger.Errorf(
-							"Could not send initial database credentials to user '%s': %s",
+							"Could not send scope ownership notification to user '%s': %s",
 							newUser.Email,
 							errMail,
 						)
-						core.Respond(ctx, true, "Could not e-mail initial database credentials.", responseBody{})
+						core.Respond(ctx, true, "Could not e-mail scope ownership notification.", responseBody{})
 						return
 					}
 				}

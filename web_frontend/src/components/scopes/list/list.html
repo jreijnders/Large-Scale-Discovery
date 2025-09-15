@@ -31,7 +31,7 @@
                 <th style="width: 76px;">Type</th>
                 <th style="width: 74px;">Config</th>
                 <th style="width: 150px;">Cycle Progress</th>
-                <th class="no-sort" style="width:1%;"></th>
+                <th class="no-sort" style="min-width: 90px; width:268px;"></th>
             </tr>
             </thead>
             <tbody>
@@ -90,7 +90,8 @@
                         </div>
                     </div>
                 </td>
-                <td class="right aligned" style="background-color: #f9fafb; white-space:nowrap;">
+                <td class="right aligned" style="background-color: #f9fafb;">
+                    <div style="display: flex; flex-wrap: wrap; gap: 2px; justify-content: right">
                     <button class="ui teal mini icon button" type="button" data-tooltip="Scan Targets"
                             data-position="top center"
                             data-variation="tiny"
@@ -139,6 +140,7 @@
                             data-bind="click: function(data, event) { $parents[1].deleteScope(data, event)}">
                         <i class="trash alternate outline icon"></i>
                     </button>
+                    </div>
                 </td>
             </tr>
             <!-- /ko -->

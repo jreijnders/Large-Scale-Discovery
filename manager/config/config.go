@@ -1,7 +1,7 @@
 /*
 * Large-Scale Discovery, a network scanning solution for information gathering in large IT/OT network environments.
 *
-* Copyright (c) Siemens AG, 2016-2024.
+* Copyright (c) Siemens AG, 2016-2025.
 *
 * This work is licensed under the terms of the MIT license. For a copy, see the LICENSE file in the top-level
 * directory or visit <https://opensource.org/licenses/MIT>.
@@ -184,6 +184,7 @@ func defaultManagerConfigFactory() ManagerConfig {
 		SmbScanTimeoutMinutes:        60 * 24 * 4,
 		SmbDepth:                     -1,
 		SmbThreads:                   4,
+		SmbForcedShares:              "C,D,E,F,G,H,C$,D$,E$,F$,G$,H$,ADMIN$,TEMP,TMP,tracking.log,not_existing_share,ofcscan",
 		SmbExcludeShares:             "print$,W7DP$,LSDP,LSDP_mosaic$,LSDP_test$,LSDP.WW005,lsdp-backup,lsdp_drivers_ww300$,LSDPW7$,custom_root$,gplmshare,SCCMContentLib$,SCCMContentLibD$,WsusContent",
 		SmbExcludeFolders:            "",
 		SmbExcludeExtensions:         "",

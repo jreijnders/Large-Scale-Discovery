@@ -1,7 +1,7 @@
 /*
 * Large-Scale Discovery, a network scanning solution for information gathering in large IT/OT network environments.
 *
-* Copyright (c) Siemens AG, 2016-2024.
+* Copyright (c) Siemens AG, 2016-2025.
 *
 * This work is licensed under the terms of the MIT license. For a copy, see the LICENSE file in the top-level
 * directory or visit <https://opensource.org/licenses/MIT>.
@@ -18,6 +18,7 @@ import (
 	"github.com/siemens/Large-Scale-Discovery/log"
 	"go.uber.org/zap/zapcore"
 	"os"
+	"path/filepath"
 	"sync"
 )
 
@@ -123,7 +124,7 @@ func defaultBrokerConfigFactory() BrokerConfig {
 
 	// Prepare default logging settings and adapt for broker
 	logging := log.DefaultLogSettingsFactory()
-	logging.File.Path = "./logs/broker.log"
+	logging.File.Path = filepath.Join("logs", "broker.log")
 	logging.Smtp.Connector.Subject = "Broker Error Log"
 
 	// Prepare default settings for development

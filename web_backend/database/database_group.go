@@ -1,7 +1,7 @@
 /*
 * Large-Scale Discovery, a network scanning solution for information gathering in large IT/OT network environments.
 *
-* Copyright (c) Siemens AG, 2016-2024.
+* Copyright (c) Siemens AG, 2016-2025.
 *
 * This work is licensed under the terms of the MIT license. For a copy, see the LICENSE file in the top-level
 * directory or visit <https://opensource.org/licenses/MIT>.
@@ -37,7 +37,7 @@ type T_group struct {
 	AllowNetwork bool `gorm:"column:allow_network;not null;default:false" json:"allow_network"`
 	AllowAsset   bool `gorm:"column:allow_asset;not null;default:false" json:"allow_asset"`
 
-	Ownerships []T_ownership `gorm:"foreignKey:IdTGroup" json:"ownerships"`
+	Ownerships []T_ownership `gorm:"foreignKey:IdTGroup;constraint:OnUpdate:CASCADE,OnDelete:CASCADE" json:"ownerships"`
 }
 
 // BeforeSave is a GORM hook that's executed every time the user object is written to the DB. This should be used to

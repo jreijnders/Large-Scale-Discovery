@@ -1,7 +1,7 @@
 /*
 * Large-Scale Discovery, a network scanning solution for information gathering in large IT/OT network environments.
 *
-* Copyright (c) Siemens AG, 2016-2024.
+* Copyright (c) Siemens AG, 2016-2025.
 *
 * This work is licensed under the terms of the MIT license. For a copy, see the LICENSE file in the top-level
 * directory or visit <https://opensource.org/licenses/MIT>.
@@ -47,15 +47,15 @@ var Users = func() gin.HandlerFunc {
 
 		// Prepare memory for list of groups
 		var userEntries = make([]database.T_user, 0, 0) // Initialize empty slice to avoid returning nil to frontend
-		var errUserEntriesUnfiltered error
+		var errUserEntries error
 
 		// Query users depending on whether user is admin or not
 		if contextUser.Admin {
 
 			// Query all entries
-			userEntries, errUserEntriesUnfiltered = database.GetUsers()
-			if errUserEntriesUnfiltered != nil {
-				logger.Errorf("Could not query existing users: %s", errUserEntriesUnfiltered)
+			userEntries, errUserEntries = database.GetUsers()
+			if errUserEntries != nil {
+				logger.Errorf("Could not query existing users: %s", errUserEntries)
 				core.RespondInternalError(ctx) // Return generic error information
 				return
 			}
@@ -64,9 +64,9 @@ var Users = func() gin.HandlerFunc {
 
 			// Query all entries
 			var userEntriesUnfiltered []database.T_user
-			userEntriesUnfiltered, errUserEntriesUnfiltered = database.GetUsers()
-			if errUserEntriesUnfiltered != nil {
-				logger.Errorf("Could not query existing users: %s", errUserEntriesUnfiltered)
+			userEntriesUnfiltered, errUserEntries = database.GetUsers()
+			if errUserEntries != nil {
+				logger.Errorf("Could not query existing users: %s", errUserEntries)
 				core.RespondInternalError(ctx) // Return generic error information
 				return
 			}
@@ -414,6 +414,7 @@ var UserResetDbPassword = func(smtpConnection *utils.Smtp) gin.HandlerFunc {
 
 	// Define expected response structure
 	type responseBody struct {
+		Password string `json:"password"` // Only returned if it couldn't be sent via encrypted e-mail
 	}
 
 	// Return request handling function
@@ -470,35 +471,50 @@ var UserResetDbPassword = func(smtpConnection *utils.Smtp) gin.HandlerFunc {
 			logger.Errorf("Updated an invalid amount of users: %d", saved)
 		}
 
-		// Prepare mail values
-		subject := fmt.Sprintf("Large-Scale Discovery - Temporary Credentials")
-		message := fmt.Sprintf("Here are your personal and TEMPORARY database credentials.\n"+
-			"For details please visit %s.\n\n"+
-			"Username:\t%s\n"+
-			"Password:\t%s\n\n"+
-			"This credentials are valid for limited time on all granted scope views!\n\n"+
-			"Via the web interface, you can:\n"+
-			"   - Request a new personal and temporary database password\n"+
-			"   - Find database connection details to access scan results\n"+
-			"   - See the scan progress of a certain scan scope\n",
-			ctx.Request.Host, // Prepare dynamically, website might be accessed via different domains
-			contextUser.Email,
-			dbPassword,
-		)
+		// Prepare response body
+		msg := ""
+		body := responseBody{}
 
 		// Enable encryption by setting user certificate, if available
-		var encCert [][]byte
-		if len(contextUser.Certificate) > 0 {
-			encCert = [][]byte{contextUser.Certificate}
-		}
-
-		// Send new token to user via encrypted e-mail
 		if _build.DevMode {
+
+			// Log action
 			logger.Infof("Skipping user e-mail notification during development.")
 			logger.Infof("Set '%s' as development DB password for user '%s'.", dbPassword, contextUser.Email)
-		} else {
+
+			// Set response message
+			msg = "Database password set."
+
+			// Expose new password once through web interface in a non-persistent way
+			body.Password = dbPassword
+
+		} else if len(contextUser.Certificate) > 0 {
+
+			// Log action
 			logger.Debugf("Sending new database password to requesting user via e-mail.")
-			errMail := smtp.SendMail3(
+
+			// Set response message
+			msg = "Database password sent via e-mail."
+
+			// Prepare mail values
+			subject := fmt.Sprintf("Large-Scale Discovery - Temporary Credentials")
+			message := fmt.Sprintf("Here are your personal and TEMPORARY database credentials.\n"+
+				"For details please visit %s.\n\n"+
+				"Username:\t%s\n"+
+				"Password:\t%s\n\n"+
+				"This credentials are valid for limited time on all granted scope views!\n\n"+
+				"Via the web interface, you can:\n"+
+				"   - Request a new personal and temporary database password\n"+
+				"   - Find database connection details to access scan results\n"+
+				"   - See the scan progress of a certain scan scope\n",
+				ctx.Request.Host, // Prepare dynamically, website might be accessed via different domains
+				contextUser.Email,
+				dbPassword,
+			)
+
+			// Send new token to user via encrypted e-mail
+			encCert := [][]byte{contextUser.Certificate}
+			errMail := smtp.SendMail2(
 				smtpConnection.Server,
 				smtpConnection.Port,
 				smtpConnection.Username,
@@ -506,12 +522,11 @@ var UserResetDbPassword = func(smtpConnection *utils.Smtp) gin.HandlerFunc {
 				smtpConnection.Sender,
 				[]mail.Address{{Name: contextUser.Name + " " + contextUser.Surname, Address: contextUser.Email}},
 				subject,
-				message,
+				[]byte(message),
 				smtpConnection.OpensslPath,
 				smtpConnection.SignatureCert,
 				smtpConnection.SignatureKey,
 				encCert,
-				"",
 			)
 			if errMail != nil {
 				logger.Errorf(
@@ -522,6 +537,16 @@ var UserResetDbPassword = func(smtpConnection *utils.Smtp) gin.HandlerFunc {
 				core.Respond(ctx, true, "Could not e-mail new database credentials.", responseBody{})
 				return
 			}
+		} else {
+
+			// Log action
+			logger.Debugf("Returning new database password to requesting user via web interface.")
+
+			// Set response message
+			msg = "Database password set."
+
+			// Expose new password once through web interface in a non-persistent way
+			body.Password = dbPassword
 		}
 
 		// Log event
@@ -533,7 +558,7 @@ var UserResetDbPassword = func(smtpConnection *utils.Smtp) gin.HandlerFunc {
 		}
 
 		// Return response
-		core.Respond(ctx, false, "Database password sent via E-mail.", responseBody{})
+		core.Respond(ctx, false, msg, body)
 	}
 }
 
@@ -604,7 +629,7 @@ var UserFeedback = func(smtpConnection *utils.Smtp) gin.HandlerFunc {
 		)
 
 		// Send email with feedback
-		errSend := smtp.SendMail3(
+		errSend := smtp.SendMail2(
 			smtpConnection.Server,
 			smtpConnection.Port,
 			smtpConnection.Username,
@@ -612,12 +637,11 @@ var UserFeedback = func(smtpConnection *utils.Smtp) gin.HandlerFunc {
 			smtpConnection.Sender,
 			smtpConnection.Recipients,
 			subject,
-			message,
+			[]byte(message),
 			"",
 			nil,
 			nil,
 			smtpConnection.EncryptionCerts,
-			"",
 		)
 		if errSend != nil {
 			logger.Errorf(

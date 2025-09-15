@@ -39,7 +39,6 @@ requireJsOptimizerConfig = merge(requireJsRuntimeConfig, {
         'pages/admin/databases/databases',
         'pages/admin/logs/logs',
         'pages/installation/installation',
-        'pages/profile/profile',
         'components/activity/activity',
         'components/agents/agents',
         'components/charts/access/access',

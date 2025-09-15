@@ -1,7 +1,7 @@
 /*
 * Large-Scale Discovery, a network scanning solution for information gathering in large IT/OT network environments.
 *
-* Copyright (c) Siemens AG, 2016-2024.
+* Copyright (c) Siemens AG, 2016-2025.
 *
 * This work is licensed under the terms of the MIT license. For a copy, see the LICENSE file in the top-level
 * directory or visit <https://opensource.org/licenses/MIT>.
@@ -235,16 +235,55 @@ define(["knockout", "text!./list.html", "postbox", "jquery", "jquery-tablesort",
                     // Handle request success
                     const callbackSuccess = function (response, textStatus, jqXHR) {
 
-                        // Show toast message for user
-                        toast(response.message, "success");
+                        // Get secret if returned by the backend.
+                        // It's only returned if it couldn't be sent out via encrypted e-mail.
+                        var secret = response.body["secret"]
+
+                        // Show toast message for successful modal.
+                        // If secret is empty, it was sent out by e-mail by the backend.
+                        if (secret === "") {
+                            toast(response.message, "success");
+                        } else {
+                            infoOverlay(
+                                "key",
+                                "Generated Scope Secret",
+                                'Please note the following scan scope secret, it will disappear shortly.</br>\n' +
+                                '<div class="ui sixteen column centered grid">\n' +
+                                '  <div class="sixteen wide column">\n' +
+                                '       <table class="ui centered inverted black table">\n' +
+                                '         <tbody>\n' +
+                                '           <tr class="center aligned">\n' +
+                                '             <td>' + secret + '</td>\n' +
+                                '           </tr>\n' +
+                                '         </tbody>\n' +
+                                '       </table>\n' +
+                                '  </div>\n' +
+                                '</div>\n',
+                                function () {
+
+                                    // Clear secret after dialog close
+                                    secret = ""
+
+                                    // Bug fix, manually reset right margin to zero. It was changed by first
+                                    // modal dimmer to mitigate jumping content when scroll bar disappears.
+                                    // However, it fails to automatically reset if a new modal is opened before
+                                    // the previous one was completely terminated.
+                                    $('body').css("margin-right", "0px")
+                                },
+                                10000, // Safety timeout for modal, in case it's showing sensitive data
+                            )
+                        }
                     };
+
+                    // Prepare request body
+                    var reqData = {"id": data.id};
 
                     // Send request
                     apiCall(
                         "POST",
                         "/api/v1/scope/secret",
                         {},
-                        {"id": data.id},
+                        reqData,
                         callbackSuccess,
                         null
                     );

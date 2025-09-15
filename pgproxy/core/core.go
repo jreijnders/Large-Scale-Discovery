@@ -1,7 +1,7 @@
 /*
 * Large-Scale Discovery, a network scanning solution for information gathering in large IT/OT network environments.
 *
-* Copyright (c) Siemens AG, 2016-2024.
+* Copyright (c) Siemens AG, 2016-2025.
 *
 * This work is licensed under the terms of the MIT license. For a copy, see the LICENSE file in the top-level
 * directory or visit <https://opensource.org/licenses/MIT>.
@@ -11,7 +11,6 @@
 package core
 
 import (
-	"context"
 	scanUtils "github.com/siemens/GoScans/utils"
 	"github.com/siemens/Large-Scale-Discovery/_build"
 	"github.com/siemens/Large-Scale-Discovery/log"
@@ -22,11 +21,10 @@ import (
 	"sync"
 )
 
-var coreCtx, coreCtxCancelFunc = context.WithCancel(context.Background()) // Agent context and context cancellation function. Agent should terminate when context is closed
-var shutdownOnce sync.Once                                                // Helper variable to prevent shutdown from doing its work multiple times.
-var rpcClient *utils.Client                                               // RPC client struct handling RPC connections and requests. This needs to be accessible by handler packages
+var shutdownOnce sync.Once  // Helper variable to prevent shutdown from doing its work multiple times.
+var rpcClient *utils.Client // RPC client struct handling RPC connections and requests. This needs to be accessible by handler packages
 
-func InitManager() error {
+func ConnectManager() error {
 
 	// Get global logger
 	logger := log.GetLogger()
@@ -64,16 +62,12 @@ func Shutdown() {
 
 		// Log termination request
 		logger := log.GetLogger()
-		logger.Infof("RPC client shutting down.")
-
-		// Close agent context. Waiting goroutines will abort if it is closed.
-		coreCtxCancelFunc()
+		logger.Infof("Shutting down.")
 
 		// Disconnect from manager
 		if rpcClient != nil {
 			rpcClient.Disconnect()
 		}
-		logger.Debugf("RPC client stopped.")
 	})
 }
 

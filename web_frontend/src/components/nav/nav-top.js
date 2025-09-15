@@ -1,7 +1,7 @@
 /*
 * Large-Scale Discovery, a network scanning solution for information gathering in large IT/OT network environments.
 *
-* Copyright (c) Siemens AG, 2016-2024.
+* Copyright (c) Siemens AG, 2016-2025.
 *
 * This work is licensed under the terms of the MIT license. For a copy, see the LICENSE file in the top-level
 * directory or visit <https://opensource.org/licenses/MIT>.
@@ -18,9 +18,6 @@ define(["knockout", "../../globals", "text!./nav-top.html", "postbox", "jquery",
 
             // Initialize observables
             this.currentRoute = params.currentRoute
-            this.avatarInput = ko.computed(function () {
-                return [userEmail(), userGender()];
-            }, this);
 
             // Get reference to the view model's actual HTML within the DOM
             this.$domComponent = $('#divNavTop');
@@ -43,13 +40,6 @@ define(["knockout", "../../globals", "text!./nav-top.html", "postbox", "jquery",
                     ctx.$domComponent.css('background-color', 'transparent');
                 },
             });
-
-            // Nav-top is already shown in the background with cached data. It needs to be updated if new data
-            // arrived after user login (if there was no active session).
-            initAvatar(this.$domComponent.find(".image")[0], userEmail(), userGender(), false);
-            this.subscriptions.push(this.avatarInput.subscribe(function (avatarInput) {
-                initAvatar(ctx.$domComponent.find(".image")[0], avatarInput[0], avatarInput[1], false);
-            }));
         }
 
         // VIEWMODEL ACTION
@@ -68,6 +58,12 @@ define(["knockout", "../../globals", "text!./nav-top.html", "postbox", "jquery",
                 return ''
             }
             return 'white'
+        }
+
+        // VIEWMODEL ACTION
+        ViewModel.prototype.togglePresentationMode = function (data, event) {
+            presentationMode(!presentationMode())
+            localStorage.setItem("presentation", (presentationMode()).toString());
         }
 
         // VIEWMODEL ACTION
@@ -107,17 +103,50 @@ define(["knockout", "../../globals", "text!./nav-top.html", "postbox", "jquery",
                     // Handle request success
                     const callbackSuccess = function (response, textStatus, jqXHR) {
 
-                        // Show toast message for user
-                        toast(response.message, "success");
-                    };
+                        // Get password if returned by the backend.
+                        // It's only returned if it couldn't be sent out via encrypted e-mail.
+                        var password = response.body["password"]
 
-                    // Prepare request body
-                    var reqData = {};
+                        // Show toast message for successful modal.
+                        // If password is empty, it was sent out by e-mail by the backend.
+                        if (password === "") {
+                            toast(response.message, "success");
+                        } else {
+                            infoOverlay(
+                                "key",
+                                "Generated Database Password",
+                                'Please note the following database password, it will disappear shortly.</br>\n' +
+                                '<div class="ui sixteen column centered grid">\n' +
+                                '  <div class="six wide column">\n' +
+                                '       <table class="ui centered inverted black table">\n' +
+                                '         <tbody>\n' +
+                                '           <tr class="center aligned">\n' +
+                                '             <td>' + password + '</td>\n' +
+                                '           </tr>\n' +
+                                '         </tbody>\n' +
+                                '       </table>\n' +
+                                '  </div>\n' +
+                                '</div>\n',
+                                function () {
+
+                                    // Clear password after dialog close
+                                    password = ""
+
+                                    // Bug fix, manually reset right margin to zero. It was changed by first
+                                    // modal dimmer to mitigate jumping content when scroll bar disappears.
+                                    // However, it fails to automatically reset if a new modal is opened before
+                                    // the previous one was completely terminated.
+                                    $('body').css("margin-right", "0px")
+                                },
+                                10000, // Safety timeout for modal, in case it's showing sensitive data
+                            )
+                        }
+                    };
 
                     // Send request
                     apiCall(
                         "POST",
-                        "/api/v1/user/reset",
+                        "/api/v1/user/password",
                         {},
                         null,
                         callbackSuccess,

@@ -11,8 +11,8 @@
     </div>
 </div>
 <!-- /ko -->
+<div style="height:15vw; max-height:160px; background-color: teal; background-image: url('img/header2.jpg'); background-position: center bottom; background-size: cover;"></div>
 
-<div style="height:160px; background-color: teal; background-image: url('img/header2.jpg'); background-repeat: no-repeat; background-position: center bottom;"></div>
 <div id="divNavTop" class="ui borderless teal inverted pointing menu"
      style="margin-top: -40px; background-color: transparent; z-index: 1111">
     <div class="ui container">
@@ -49,6 +49,9 @@
         <!-- /ko -->
 
         <div class="right inverted menu">
+            <a class="item" data-bind="click: togglePresentationMode">
+                <i data-bind="class: presentationClass() ? 'eye slash icon' : 'eye icon' "></i>&nbsp
+            </a>
             <!-- ko if: userAdmin() || userOwner() -->
             <a class="item" href="#installation"
                data-bind="style: { 'background-color': btnBackground('installation'), 'color': btnColor('installation') }">
@@ -56,15 +59,7 @@
                 Scan Agent
             </a>
             <!-- /ko -->
-            <a class="item" href="#profile" style="padding: 0;"
-               data-bind="style: { 'background-color': btnBackground('profile'), 'color': btnColor('profile') }">
-                <div class="ui circular image" style="margin-left: 0.92857143em; width: 22px;"
-                     data-bind="style: { 'background-color': btnBackground('profile') == 'white' ? 'teal': 'rgba(255, 255, 255, 0.84)' }"></div>
-                <label style="padding: 0.92857143em 0.92857143em 0.92857143em 0.4em;"
-                       data-bind="text: userName()"></label>
-            </a>
-            <a class="item"
-               data-bind="click: submitLogout">
+            <a class="item" data-bind="click: submitLogout">
                 <i class="sign out icon"></i>
                 Logout
             </a>

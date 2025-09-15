@@ -1,7 +1,7 @@
 /*
 * Large-Scale Discovery, a network scanning solution for information gathering in large IT/OT network environments.
 *
-* Copyright (c) Siemens AG, 2016-2024.
+* Copyright (c) Siemens AG, 2016-2025.
 *
 * This work is licensed under the terms of the MIT license. For a copy, see the LICENSE file in the top-level
 * directory or visit <https://opensource.org/licenses/MIT>.
@@ -181,7 +181,7 @@ func doLogin(
 	// plugin, so save should update all user attributes, except the sensitive/internal ones (ID, e-mail, password,
 	// admin, db password). A loader may also have set a user to inactive.
 	_, errSave := user.Save(
-		"ssoid", "company", "department", "last_login", "active", "name", "surname", "gender", "demo", "certificate")
+		"company", "department", "last_login", "active", "name", "surname", "gender", "demo", "certificate")
 	if errSave != nil {
 		return nil, errSave
 	}

@@ -1,7 +1,7 @@
 /*
 * Large-Scale Discovery, a network scanning solution for information gathering in large IT/OT network environments.
 *
-* Copyright (c) Siemens AG, 2016-2024.
+* Copyright (c) Siemens AG, 2016-2025.
 *
 * This work is licensed under the terms of the MIT license. For a copy, see the LICENSE file in the top-level
 * directory or visit <https://opensource.org/licenses/MIT>.
@@ -318,9 +318,16 @@ define(["knockout", "text!./custom.html", "postbox", "jquery", "tabulator-tables
                     // Show toast message for user (but only after parent has reloaded)
                     toast(response.message, "success");
 
+                    // Show toast messages for warnings
+                    if (response.body !== null && response.body.warnings !== null && response.body.warnings.length > 0) {
+                        response.body.warnings.forEach(function (item, index) {
+                            toast(item, "warning", false, 6000);
+                        })
+                    }
+
                     // Let user know that scan input population is continued in the background
                     if (ctx.edited() === true) {
-                        toast("Target synchronization may take some time.", "info");
+                        toast("Target synchronization may take some time.", "teal");
                     }
 
                     // Unlink component

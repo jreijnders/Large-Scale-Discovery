@@ -1,7 +1,7 @@
 /*
 * Large-Scale Discovery, a network scanning solution for information gathering in large IT/OT network environments.
 *
-* Copyright (c) Siemens AG, 2016-2024.
+* Copyright (c) Siemens AG, 2016-2025.
 *
 * This work is licensed under the terms of the MIT license. For a copy, see the LICENSE file in the top-level
 * directory or visit <https://opensource.org/licenses/MIT>.
@@ -17,10 +17,19 @@ import (
 	scanUtils "github.com/siemens/GoScans/utils"
 	"github.com/siemens/Large-Scale-Discovery/agent/config"
 	"github.com/siemens/Large-Scale-Discovery/agent/core"
+	broker "github.com/siemens/Large-Scale-Discovery/broker/core"
 	"github.com/siemens/Large-Scale-Discovery/log"
 	"github.com/siemens/Large-Scale-Discovery/utils"
+	"runtime"
+	"strings"
 	"time"
 )
+
+// Build information accessible via -version
+var buildGitCommit = "dev12345"                       // Git commit hash identifying the version of this scan agent. Injected by the build command.
+var buildTimestamp = "0001-01-01T00:00:00+00:00"      // Timestamp when this agent was built. Injected by the build command.
+var buildGoVersion = runtime.Version()                // Golang version used during building of the agent.
+var buildGoArch = runtime.GOOS + "/" + runtime.GOARCH // Golang version used during building of the agent.
 
 // main application entry point
 func main() {
@@ -36,12 +45,19 @@ func main() {
 
 	// Declare command line arguments
 	setupFlag := flag.Bool("setup", false, "Executes setup. Requires administrative privileges.")
+	versionFlag := flag.Bool("version", false, "Prints build information.")
 
 	// Declare linux specific command line argument
 	flag.String("user", "", "The user to grant NFS sudoers rights.")
 
 	// Parse command line arguments
 	flag.Parse()
+
+	// Print version information
+	if *versionFlag {
+		fmt.Println(fmt.Sprintf("Agent:\n%s", "\t"+strings.Join(buildInfo(), "\n\t")))
+		return
+	}
 
 	// Initialize configuration module
 	errConf := config.Init("agent.conf")
@@ -60,14 +76,6 @@ func main() {
 		return
 	}
 
-	// Log potential panics before letting them move on
-	defer func() {
-		if r := recover(); r != nil {
-			logger.Errorf(fmt.Sprintf("Panic: %s%s", r, scanUtils.StacktraceIndented("\t")))
-			panic(r)
-		}
-	}()
-
 	// Make sure logger gets closed gracefully
 	gracy.Register(func() {
 		err := log.CloseGlobalLogger()
@@ -76,18 +84,24 @@ func main() {
 		}
 	})
 
+	// Log potential panics before letting them move on
+	defer func() {
+		if r := recover(); r != nil {
+			logger.Errorf(fmt.Sprintf("Panic: %s%s", r, scanUtils.StacktraceIndented("\t")))
+			panic(r)
+		}
+	}()
+
 	// Make agent print final message just before termination
 	gracy.Register(func() {
 		time.Sleep(time.Microsecond) // Make sure this message is written last, in case of race condition
 		logger.Debugf("Agent terminated.")
 	})
 
-	// Catch potential panics to gracefully log issue
-	defer func() {
-		if r := recover(); r != nil {
-			logger.Errorf("Panic: %s", r)
-		}
-	}()
+	// Log binary information
+	for _, info := range buildInfo() {
+		logger.Debugf("%s", info)
+	}
 
 	// Setup, if requested
 	if *setupFlag {
@@ -126,6 +140,11 @@ func main() {
 		return
 	}
 
+	// Warn if agent is run with admin privileges
+	if scanUtils.IsElevated() {
+		logger.Errorf("Scan agent is running with admin rights!")
+	}
+
 	// Initialize asset inventory functionality of discovery module
 	errInventory := discovery.InitInventories(logger, conf.Authentication.Inventories)
 	if errInventory != nil {
@@ -134,16 +153,11 @@ func main() {
 		return
 	}
 
-	// Warn if agent is run with admin privileges
-	if scanUtils.IsElevated() {
-		logger.Errorf("Scan agent is running with admin rights!")
-	}
-
 	// Make sure core gets shut down gracefully
 	gracy.Register(core.Shutdown)
 
 	// Initialize agent
-	errInit := core.Init()
+	errInit := core.Init(buildGitCommit, buildTimestamp)
 	if errInit != nil {
 		logger.Errorf("Could not initialize agent: %s", errInit)
 		return
@@ -151,4 +165,14 @@ func main() {
 
 	// Request scan tasks, execute and submit results
 	core.Run()
+}
+
+func buildInfo() []string {
+	return []string{
+		fmt.Sprintf("Build Timestamp   : %s", buildTimestamp),
+		fmt.Sprintf("Build GIT Commit  : %s", buildGitCommit[:8]),
+		fmt.Sprintf("Build Go Version  : %s", buildGoVersion),
+		fmt.Sprintf("Build OS/Arch     : %s", buildGoArch),
+		fmt.Sprintf("Broker API Version: %s", broker.BrokerApiVersion.String()),
+	}
 }

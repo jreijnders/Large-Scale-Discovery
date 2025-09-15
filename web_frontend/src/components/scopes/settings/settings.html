@@ -239,7 +239,7 @@
             </div>
 
             <!-- ko if: agentLimits -->
-            <div class="row" style="padding: 0;">
+            <div class="row">
                 <div class="ui tiny visible warning message"
                      style="width:inherit; margin-left: 1rem; margin-right: 1rem;">
                     <i class="exclamation triangle icon"></i>
@@ -330,15 +330,28 @@
                 <div class="ui right labeled input">
                     <input id="inputNetworkTimeout" type="text" placeholder="8"
                            data-bind="textInput: args().scan_settings.network_timeout_seconds">
-                    <div class="ui label" style="width: 80px">
+                    <div class="ui label">
                         Seconds
                     </div>
                 </div>
             </div>
         </div>
 
-        <div class="fields">
-            <div class="four wide field" data-bind="css: maxInstancesSmb() > 0 ? '' : 'disabled'">
+        <div class="fields" data-bind="css: maxInstancesSmb() > 0 ? '' : 'disabled'">
+            <div class="four wide field">
+                <label for="inputSmbForcedShares">
+                    SMB Force Shares&nbsp;
+                    <span data-html="Enter comma separated list of shares you would like to ignore"
+                          data-position="right center" data-variation="tiny wide"><i
+                            class="question circle outline icon"></i></span>
+                </label>
+                <textarea id="inputSmbForcedShares"
+                          rows="3"
+                          placeholder="C, D, E, F, G, H, C$, D$, E$, F$, G$, H$, ADMIN$, TEMP, TMP, tracking.log, not_existing_share, ofcscan"
+                          data-bind="textInput: args().scan_settings.smb_forced_shares">
+                </textarea>
+            </div>
+            <div class="four wide field">
                 <label for="inputSmbExcludeShares">
                     SMB Exclude Shares&nbsp;
                     <span data-html="Enter comma separated list of shares you would like to ignore"
@@ -346,12 +359,12 @@
                             class="question circle outline icon"></i></span>
                 </label>
                 <textarea id="inputSmbExcludeShares"
-                          rows="4"
+                          rows="3"
                           placeholder="print$, W7DP$, LSDP, LSDP_mosaic$, LSDP_test$, LSDP.WW005, lsdp-backup, lsdp_drivers_ww300$, LSDPW7$, custom_root$, gplmshare, SCCMContentLib$, SCCMContentLibD$, WsusContent"
                           data-bind="textInput: args().scan_settings.smb_exclude_shares">
                 </textarea>
             </div>
-            <div class="four wide field" data-bind="css: maxInstancesSmb() > 0 ? '' : 'disabled'">
+            <div class="four wide field">
                 <label for="inputSmbExcludeFolders">
                     SMB Exclude Folders&nbsp;
                     <span data-html="Enter comma separated list of folders you would like to ignore"
@@ -360,12 +373,12 @@
                 </label>
                 <textarea id="inputSmbExcludeFolders"
                           type="text"
-                          rows="4"
+                          rows="3"
                           placeholder="Comma, separated, list, of, folder, names"
                           data-bind="textInput: args().scan_settings.smb_exclude_folders">
                 </textarea>
             </div>
-            <div class="four wide field" data-bind="css: maxInstancesSmb() > 0 ? '' : 'disabled'">
+            <div class="four wide field">
                 <label for="inputSmbExcludeExtensions">
                     SMB Exclude Extensions&nbsp;
                     <span data-html="Enter comma separated list of file extensions you would like to ignore"
@@ -374,12 +387,15 @@
                 </label>
                 <textarea id="inputSmbExcludeExtensions"
                           type="text"
-                          rows="4"
+                          rows="3"
                           placeholder="Comma, separated, list, of, file, extensions"
                           data-bind="textInput: args().scan_settings.smb_exclude_extensions">
                 </textarea>
             </div>
-            <div class="four wide field" data-bind="css: maxInstancesSmb() > 0 ? '' : 'disabled'">
+        </div>
+
+        <div class="four fields" data-bind="css: maxInstancesSmb() > 0 ? '' : 'disabled'">
+            <div class="field">
                 <label for="inputSmbExcludeFileSize">
                     SMB Exclude Size&nbsp;
                     <span data-html="File size below which files are skipped during crawling"
@@ -389,11 +405,13 @@
                 <div class="ui right labeled input">
                     <input id="inputSmbExcludeFileSize" type="text" placeholder="1024"
                            data-bind="textInput: args().scan_settings.smb_exclude_file_size_below">
-                    <div class="ui label" style="width: 80px">
+                    <div class="ui label">
                         Bytes
                     </div>
                 </div>
-                <label for="inputSmbExcludeModified" style="padding-top: 13px;">
+            </div>
+            <div class="field">
+                <label for="inputSmbExcludeModified">
                     SMB Exclude Old Files&nbsp;
                     <span data-html="File modification date below which files are skipped during crawling. Files with empty modification date will be collected, nevertheless."
                           data-position="right center" data-variation="tiny wide"><i
@@ -406,10 +424,7 @@
                     </div>
                 </div>
             </div>
-        </div>
-
-        <div class="four fields">
-            <div class="field" data-bind="css: maxInstancesSmb() > 0 ? '' : 'disabled'">
+            <div class="field">
                 <label for="inputSmbDepth">
                     SMB Depth&nbsp;
                     <span data-html="Depth of the share's folder structure to go down. -1 = no limit."
@@ -419,7 +434,7 @@
                 <input type="text" id="inputSmbDepth" placeholder="-1"
                        data-bind="textInput: args().scan_settings.smb_depth">
             </div>
-            <div class="field" data-bind="css: maxInstancesSmb() > 0 ? '' : 'disabled'">
+            <div class="field">
                 <label for="inputSmbThreads">
                     SMB Threads&nbsp;
                     <span data-html="Amount of parallel requests per SMB target"
@@ -429,8 +444,24 @@
                 <input type="text" id="inputSmbThreads" placeholder="4"
                        data-bind="textInput: args().scan_settings.smb_threads">
             </div>
+        </div>
 
-            <div class="field" data-bind="css: maxInstancesWebcrawler() > 0 ? '' : 'disabled'">
+        <div class="fields" data-bind="css: maxInstancesWebcrawler() > 0 ? '' : 'disabled'">
+            <div class="twelve wide field">
+                <label for="inputWebcrawlerFollowTypes">
+                    Web Crawler Follow Types&nbsp;
+                    <span data-html="Response content types to follow"
+                          data-position="right center" data-variation="tiny wide"><i
+                            class="question circle outline icon"></i></span>
+                </label>
+                <textarea
+                        id="inputWebcrawlerFollowTypes"
+                        rows="5"
+                        placeholder="text/html, text/plain, text/javascript, application/javascript, application/json, application/atom+xml, application/rss+xml, application/xhtml+xml, application/x-latex, application/xml, application/xml-dtd, application/x-sh, application/x-tex, application/x-texinfo, text/cache-manifest, text/calendar, text/css, text/csv, text/csv-schema, text/directory, text/dns, text/ecmascript, text/encaprtp, text/example, text/fwdred, text/grammar-ref-list, text/jcr-cnd, text/markdown, text/mizar, text/n3, text/parameters, text/provenance-notation, text/prs.fallenstein.rst, text/prs.lines.tag, text/raptorfec, text/RED, text/rfc822-headers, text/rtf, text/rtp-enc-aescm128, text/rtploopback, text/rtx, text/SGML, text/t140, text/tab-separated-values, text/troff, text/turtle, text/ulpfec, text/uri-list, text/vcard, text/vnd.abc, text/vnd.debian.copyright, text/vnd.DMClientScript, text/vnd.dvb.subtitle, text/vnd.esmertec.theme-descriptor, text/vnd.fly, text/vnd.fmi.flexstor, text/vnd.graphviz, text/vnd.in3d.3dml, text/vnd.in3d.spot, text/vnd.IPTC.NewsML, text/vnd.IPTC.NITF, text/vnd.latex-z, text/vnd.motorola.reflex, text/vnd.ms-mediapackage, text/vnd.net2phone.commcenter.command, text/vnd.radisys.msml-basic-layout, text/vnd.si.uricatalogue, text/vnd.sun.j2me.app-descriptor, text/vnd.trolltech.linguist, text/vnd.wap.si, text/vnd.wap.sl, text/vnd.wap.wmlscript, text/vnd.wap-wml, text/vnd-a, text/vnd-curl, text/xml, text/xml-external-parsed-entity"
+                        data-bind="textInput: args().scan_settings.webcrawler_follow_types">
+                </textarea>
+            </div>
+            <div class="four wide field">
                 <label for="inputWebcrawlerDepth">
                     Web Crawler Depth&nbsp;
                     <span data-html="Depth of the site's navigation tree to go down. -1 = no limit."
@@ -439,9 +470,8 @@
                 </label>
                 <input type="text" id="inputWebcrawlerDepth" placeholder="-1"
                        data-bind="textInput: args().scan_settings.webcrawler_depth">
-            </div>
-            <div class="field" data-bind="css: maxInstancesWebcrawler() > 0 ? '' : 'disabled'">
-                <label for="inputWebcrawlerThreads">
+
+                <label for="inputWebcrawlerThreads" style="padding-top: 13px;">
                     Web Crawler Threads&nbsp;
                     <span data-html="Amount of parallel requests per HTTP target"
                           data-position="right center" data-variation="tiny wide"><i
@@ -450,21 +480,6 @@
                 <input type="text" id="inputWebcrawlerThreads" placeholder="4"
                        data-bind="textInput: args().scan_settings.webcrawler_max_threads">
             </div>
-        </div>
-
-        <div class="field" data-bind="css: maxInstancesWebcrawler() > 0 ? '' : 'disabled'">
-            <label for="inputWebcrawlerFollowTypes">
-                Web Crawler Follow Types&nbsp;
-                <span data-html="Response content types to follow"
-                      data-position="right center" data-variation="tiny wide"><i
-                        class="question circle outline icon"></i></span>
-            </label>
-            <textarea
-                    id="inputWebcrawlerFollowTypes"
-                    rows="2"
-                    placeholder="text/html, text/plain, text/javascript, application/javascript, application/json, application/atom+xml, application/rss+xml, application/xhtml+xml, application/x-latex, application/xml, application/xml-dtd, application/x-sh, application/x-tex, application/x-texinfo, text/cache-manifest, text/calendar, text/css, text/csv, text/csv-schema, text/directory, text/dns, text/ecmascript, text/encaprtp, text/example, text/fwdred, text/grammar-ref-list, text/jcr-cnd, text/markdown, text/mizar, text/n3, text/parameters, text/provenance-notation, text/prs.fallenstein.rst, text/prs.lines.tag, text/raptorfec, text/RED, text/rfc822-headers, text/rtf, text/rtp-enc-aescm128, text/rtploopback, text/rtx, text/SGML, text/t140, text/tab-separated-values, text/troff, text/turtle, text/ulpfec, text/uri-list, text/vcard, text/vnd.abc, text/vnd.debian.copyright, text/vnd.DMClientScript, text/vnd.dvb.subtitle, text/vnd.esmertec.theme-descriptor, text/vnd.fly, text/vnd.fmi.flexstor, text/vnd.graphviz, text/vnd.in3d.3dml, text/vnd.in3d.spot, text/vnd.IPTC.NewsML, text/vnd.IPTC.NITF, text/vnd.latex-z, text/vnd.motorola.reflex, text/vnd.ms-mediapackage, text/vnd.net2phone.commcenter.command, text/vnd.radisys.msml-basic-layout, text/vnd.si.uricatalogue, text/vnd.sun.j2me.app-descriptor, text/vnd.trolltech.linguist, text/vnd.wap.si, text/vnd.wap.sl, text/vnd.wap.wmlscript, text/vnd.wap-wml, text/vnd-a, text/vnd-curl, text/xml, text/xml-external-parsed-entity"
-                    data-bind="textInput: args().scan_settings.webcrawler_follow_types">
-            </textarea>
         </div>
 
         <div class="ui middle aligned grid">

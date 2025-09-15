@@ -1,7 +1,7 @@
 /*
 * Large-Scale Discovery, a network scanning solution for information gathering in large IT/OT network environments.
 *
-* Copyright (c) Siemens AG, 2016-2024.
+* Copyright (c) Siemens AG, 2016-2025.
 *
 * This work is licensed under the terms of the MIT license. For a copy, see the LICENSE file in the top-level
 * directory or visit <https://opensource.org/licenses/MIT>.
@@ -43,6 +43,9 @@ var Agents = func() gin.HandlerFunc {
 		// Get user from context storage
 		contextUser := core.GetContextUser(ctx)
 
+		// Request views granted from manager
+		accessibleViews, _ := manager.RpcGetViewsGranted(logger, core.RpcClient(), contextUser.Email)
+
 		// Prepare memory for list of scopes
 		var scanAgents []managerdb.T_scan_agent
 		var errScanAgents error
@@ -71,6 +74,30 @@ var Agents = func() gin.HandlerFunc {
 				// Filter for scan agents related to a scan scope owned by the user
 				for _, scanAgent := range scanAgentsUnfiltered {
 					_, ok := ownedGroups[scanAgent.ScanScope.IdTGroup]
+					if ok {
+						scanAgents = append(scanAgents, scanAgent)
+					}
+				}
+			}
+
+		} else if len(accessibleViews) > 0 {
+
+			// Prepare memory for list of agents
+			var scanAgentsUnfiltered []managerdb.T_scan_agent
+			scanAgentsUnfiltered, errScanAgents = manager.RpcGetAgents(logger, core.RpcClient())
+
+			// Filter for scan scopes accessible by the user (independent of scope view)
+			if errScanAgents == nil {
+
+				// Prepare list of accessible scan scopes based on scope views
+				accessibleScopeIds := make(map[uint64]struct{}, len(accessibleViews))
+				for _, scopeView := range accessibleViews {
+					accessibleScopeIds[scopeView.IdTScanScope] = struct{}{}
+				}
+
+				// Filter for scan agents related to a scan scope owned by the user
+				for _, scanAgent := range scanAgentsUnfiltered {
+					_, ok := accessibleScopeIds[scanAgent.ScanScope.Id]
 					if ok {
 						scanAgents = append(scanAgents, scanAgent)
 					}

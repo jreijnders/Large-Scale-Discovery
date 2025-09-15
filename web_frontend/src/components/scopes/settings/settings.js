@@ -1,7 +1,7 @@
 /*
 * Large-Scale Discovery, a network scanning solution for information gathering in large IT/OT network environments.
 *
-* Copyright (c) Siemens AG, 2016-2024.
+* Copyright (c) Siemens AG, 2016-2025.
 *
 * This work is licensed under the terms of the MIT license. For a copy, see the LICENSE file in the top-level
 * directory or visit <https://opensource.org/licenses/MIT>.
@@ -53,7 +53,6 @@ define(["knockout", "text!./settings.html", "postbox", "jquery", "tabulator-tabl
                         if (obj.limits === true) {
                             limits = true
                         }
-                        console.log(obj.limits);
                     });
                 }
                 return limits
@@ -250,6 +249,7 @@ define(["knockout", "text!./settings.html", "postbox", "jquery", "tabulator-tabl
                 "smb_scan_timeout_minutes": parseInt(this.args()["scan_settings"]["smb_scan_timeout_minutes"], 10),
                 "smb_depth": parseInt(this.args()["scan_settings"]["smb_depth"], 10),
                 "smb_threads": parseInt(this.args()["scan_settings"]["smb_threads"], 10),
+                "smb_forced_shares": this.args()["scan_settings"]["smb_forced_shares"],
                 "smb_exclude_shares": this.args()["scan_settings"]["smb_exclude_shares"],
                 "smb_exclude_folders": this.args()["scan_settings"]["smb_exclude_folders"],
                 "smb_exclude_extensions": this.args()["scan_settings"]["smb_exclude_extensions"],

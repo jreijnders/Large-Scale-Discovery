@@ -1,7 +1,7 @@
 /*
 * Large-Scale Discovery, a network scanning solution for information gathering in large IT/OT network environments.
 *
-* Copyright (c) Siemens AG, 2016-2024.
+* Copyright (c) Siemens AG, 2016-2025.
 *
 * This work is licensed under the terms of the MIT license. For a copy, see the LICENSE file in the top-level
 * directory or visit <https://opensource.org/licenses/MIT>.
@@ -117,10 +117,10 @@ type T_scan_scope struct {
 	CycleActive  float64   `gorm:"column:cycle_active;type:float;default:0" json:"cycle_active"`        // Percentage of active input scan tasks. Is updated in intervals and not a 100% current.
 	CycleFailed  float64   `gorm:"column:cycle_failed;type:float;default:0" json:"cycle_failed"`        // Percentage of failed input scan tasks. Is updated in intervals and not a 100% current.
 
-	DbServer     T_db_server    `gorm:"foreignKey:IdTDbServer;constraint:OnUpdate:CASCADE,OnDelete:CASCADE" json:"-"` // Database server connection details to connect to
-	ScanSettings T_scan_setting `gorm:"foreignKey:IdTScanScope" json:"-"`
-	ScanAgents   []T_scan_agent `gorm:"foreignKey:IdTScanScope" json:"-"` // Scan agent data (cached data)
-	ScopeViews   []T_scope_view `gorm:"foreignKey:IdTScanScope" json:"-"`
+	DbServer     T_db_server    `gorm:"foreignKey:IdTDbServer" json:"-"` // Database server connection details to connect to
+	ScanSettings T_scan_setting `gorm:"foreignKey:IdTScanScope;constraint:OnUpdate:CASCADE,OnDelete:CASCADE" json:"-"`
+	ScanAgents   []T_scan_agent `gorm:"foreignKey:IdTScanScope;constraint:OnUpdate:CASCADE,OnDelete:CASCADE" json:"-"` // Scan agent data (cached data)
+	ScopeViews   []T_scope_view `gorm:"foreignKey:IdTScanScope;constraint:OnUpdate:CASCADE,OnDelete:CASCADE" json:"-"`
 }
 
 // BeforeSave is a GORM hook that's executed every time the user object is written to the DB. This should be used to
@@ -216,6 +216,7 @@ type T_scan_setting struct {
 	SmbScanTimeoutMinutes        int            `gorm:"column:smb_scan_timeout_minutes;type:int" json:"smb_scan_timeout_minutes"`
 	SmbDepth                     int            `gorm:"column:smb_depth;type:int" json:"smb_depth"`
 	SmbThreads                   int            `gorm:"column:smb_threads;type:int" json:"smb_threads"`
+	SmbForcedShares              string         `gorm:"column:smb_forced_shares;type:text" json:"smb_forced_shares"`
 	SmbExcludeShares             string         `gorm:"column:smb_exclude_shares;type:text" json:"smb_exclude_shares"`
 	SmbExcludeFolders            string         `gorm:"column:smb_exclude_folders;type:text" json:"smb_exclude_folders"`
 	SmbExcludeExtensions         string         `gorm:"column:smb_exclude_extensions;type:text" json:"smb_exclude_extensions"`
@@ -233,7 +234,7 @@ type T_scan_setting struct {
 	WebenumScanTimeoutMinutes    int            `gorm:"column:webenum_scan_timeout_minutes;type:int" json:"webenum_scan_timeout_minutes"`
 	WebenumProbeRobots           bool           `gorm:"column:webenum_probe_robots;type:bool" json:"webenum_probe_robots"`
 
-	ScanScope *T_scan_scope `gorm:"foreignKey:IdTScanScope;constraint:OnUpdate:CASCADE,OnDelete:CASCADE" json:"-"` // Has to be a pointer in order to prevent an invalid recursion. Can be nil if the id has been set
+	ScanScope *T_scan_scope `gorm:"foreignKey:IdTScanScope" json:"-"` // Has to be a pointer in order to prevent an invalid recursion. Can be nil if the id has been set
 }
 
 // BeforeSave is a GORM hook that's executed every time the user object is written to the DB. This should be used to
@@ -281,6 +282,9 @@ func (scanSettings *T_scan_setting) BeforeSave(tx *gorm.DB) error {
 	}
 	scanSettings.DiscoveryExcludeDomains = strings.Trim(scanSettings.DiscoveryExcludeDomains, " ,")
 	tx.Statement.SetColumn("discovery_exclude_domains", scanSettings.DiscoveryExcludeDomains)
+
+	scanSettings.SmbForcedShares = b.Sanitize(scanSettings.SmbForcedShares)
+	tx.Statement.SetColumn("smb_forced_shares", scanSettings.SmbForcedShares)
 
 	scanSettings.SmbExcludeShares = b.Sanitize(scanSettings.SmbExcludeShares)
 	tx.Statement.SetColumn("smb_exclude_shares", scanSettings.SmbExcludeShares)
@@ -550,7 +554,11 @@ type T_scan_agent struct {
 	PlatformFamily  string `gorm:"column:platform_family;type:text;" json:"platform_family"`
 	PlatformVersion string `gorm:"column:platform_version;type:text;" json:"platform_version"`
 
-	ScanScope T_scan_scope `gorm:"foreignKey:IdTScanScope;constraint:OnUpdate:CASCADE,OnDelete:CASCADE" json:"-"` // Can be empty if the ID is set in turn
+	BuildCommit    string `gorm:"column:build_commit;type:text;" json:"build_commit"`
+	BuildTimestamp string `gorm:"column:build_timestamp;type:text;" json:"build_timestamp"`
+	ApiVersion     string `gorm:"column:api_version;type:text;" json:"api_version"`
+
+	ScanScope T_scan_scope `gorm:"foreignKey:IdTScanScope" json:"-"` // Can be empty if the ID is set in turn
 }
 
 // BeforeSave is a GORM hook that's executed every time the user object is written to the DB. This should be used to
@@ -570,6 +578,24 @@ func (scanAgent *T_scan_agent) BeforeSave(tx *gorm.DB) error {
 
 	scanAgent.Ip = b.Sanitize(scanAgent.Ip)
 	tx.Statement.SetColumn("ip", scanAgent.Ip)
+
+	scanAgent.Platform = b.Sanitize(scanAgent.Platform)
+	tx.Statement.SetColumn("platform", scanAgent.Platform)
+
+	scanAgent.PlatformFamily = b.Sanitize(scanAgent.PlatformFamily)
+	tx.Statement.SetColumn("platform_family", scanAgent.PlatformFamily)
+
+	scanAgent.PlatformVersion = b.Sanitize(scanAgent.PlatformVersion)
+	tx.Statement.SetColumn("platform_version", scanAgent.PlatformVersion)
+
+	scanAgent.BuildCommit = b.Sanitize(scanAgent.BuildCommit)
+	tx.Statement.SetColumn("build_commit", scanAgent.BuildCommit)
+
+	scanAgent.BuildTimestamp = b.Sanitize(scanAgent.BuildTimestamp)
+	tx.Statement.SetColumn("build_timestamp", scanAgent.BuildTimestamp)
+
+	scanAgent.ApiVersion = b.Sanitize(scanAgent.ApiVersion)
+	tx.Statement.SetColumn("api_version", scanAgent.ApiVersion)
 
 	// Return nil as everything went fine
 	return nil
@@ -630,8 +656,8 @@ type T_scope_view struct {
 	Filters   utils.JsonMap `gorm:"column:filters;type:json;default:'{}'" json:"filters"`                  // Applied filters restricting view on original data
 	ViewNames string        `gorm:"column:view_names;type:text" json:"view_names"`                         // Comma separated list of view table names as created in the scope db
 
-	ScanScope T_scan_scope   `gorm:"foreignKey:IdTScanScope;constraint:OnUpdate:CASCADE,OnDelete:CASCADE" json:"-"`
-	Grants    []T_view_grant `gorm:"foreignKey:IdTScopeView" json:"-"`
+	ScanScope T_scan_scope   `gorm:"foreignKey:IdTScanScope" json:"-"`
+	Grants    []T_view_grant `gorm:"foreignKey:IdTScopeView;constraint:OnUpdate:CASCADE,OnDelete:CASCADE" json:"-"`
 }
 
 // BeforeSave is a GORM hook that's executed every time the user object is written to the DB. This should be used to
@@ -699,7 +725,7 @@ type T_view_grant struct {
 	Expiry      time.Time `gorm:"column:expiry;not null" json:"expiry"`                    // Timestamp when this access grant is scheduled to expire, should equal the values set on the database servers
 	Description string    `gorm:"column:description;type:text" json:"description"`         // Set by the creator, only necessary for access tokens
 
-	ScopeView T_scope_view `gorm:"foreignKey:IdTScopeView;constraint:OnUpdate:CASCADE,OnDelete:CASCADE" json:"-"`
+	ScopeView T_scope_view `gorm:"foreignKey:IdTScopeView" json:"-"`
 }
 
 // BeforeSave is a GORM hook that's executed every time the user object is written to the DB. This should be used to

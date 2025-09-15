@@ -1,7 +1,7 @@
 /*
 * Large-Scale Discovery, a network scanning solution for information gathering in large IT/OT network environments.
 *
-* Copyright (c) Siemens AG, 2016-2024.
+* Copyright (c) Siemens AG, 2016-2025.
 *
 * This work is licensed under the terms of the MIT license. For a copy, see the LICENSE file in the top-level
 * directory or visit <https://opensource.org/licenses/MIT>.
@@ -508,6 +508,13 @@ func UpdateDatabaseCredentials(serverDb *gorm.DB, username string, password stri
 		return errQuery
 	}
 
+	// Kill existing connections. User requesting fresh password, so there would most likely not be any active
+	// sessions anymore. Kill them otherwise to prevent potentially hijacked sessions from being kept alive.
+	errKill := killUserConnections(serverDb, username)
+	if errKill != nil {
+		return errKill
+	}
+
 	// Update user
 	errDb := serverDb.Exec(query).Error
 	if errDb != nil {
@@ -532,8 +539,9 @@ func AutoMigrateScopeDb(scopeDb *gorm.DB) error {
 		&T_smb_file{},
 		&T_ssh{},
 		&T_ssl{},
-		&T_ssl_certificate{},
 		&T_ssl_cipher{},
+		&T_ssl_certificate{},
+		&T_ssl_setting{},
 		&T_ssl_issue{},
 		&T_webcrawler{},
 		&T_webcrawler_vhost{},

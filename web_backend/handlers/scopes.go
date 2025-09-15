@@ -1,7 +1,7 @@
 /*
 * Large-Scale Discovery, a network scanning solution for information gathering in large IT/OT network environments.
 *
-* Copyright (c) Siemens AG, 2016-2024.
+* Copyright (c) Siemens AG, 2016-2025.
 *
 * This work is licensed under the terms of the MIT license. For a copy, see the LICENSE file in the top-level
 * directory or visit <https://opensource.org/licenses/MIT>.
@@ -14,17 +14,27 @@ import (
 	"errors"
 	"fmt"
 	"github.com/gin-gonic/gin"
+	"github.com/siemens/GoScans/discovery"
 	scanUtils "github.com/siemens/GoScans/utils"
 	"github.com/siemens/Large-Scale-Discovery/_build"
+	"github.com/siemens/Large-Scale-Discovery/log"
 	manager "github.com/siemens/Large-Scale-Discovery/manager/core"
 	managerdb "github.com/siemens/Large-Scale-Discovery/manager/database"
 	"github.com/siemens/Large-Scale-Discovery/utils"
+	"github.com/siemens/Large-Scale-Discovery/web_backend/config"
 	"github.com/siemens/Large-Scale-Discovery/web_backend/core"
 	"github.com/siemens/Large-Scale-Discovery/web_backend/database"
 	"github.com/siemens/ZapSmtp/smtp"
+	"go.uber.org/zap"
+	"go.uber.org/zap/zapcore"
+	"io"
 	"net/mail"
 	"strings"
+	"time"
 )
+
+// argsTestTime time limit for testing Nmap arguments
+const argsTestTime = time.Second * 1 / 2
 
 type Connection struct {
 	Host     string `json:"host"`
@@ -592,6 +602,9 @@ var ScopeUpdateSettings = func() gin.HandlerFunc {
 		// Get user from context storage
 		contextUser := core.GetContextUser(ctx)
 
+		// Get config
+		conf := config.GetConfig()
+
 		// Declare expected request struct
 		var req requestBody
 
@@ -631,6 +644,93 @@ var ScopeUpdateSettings = func() gin.HandlerFunc {
 			return
 		}
 
+		// Check if nmap path is set for potential optional Dry Run check
+		if conf.Paths.Nmap != "" {
+
+			// Prepare discarding logger, we don't need the discovery scan to log anything during this test run.
+			loggerDiscard := log.NewZapLogger(zap.New(zapcore.NewCore(
+				zapcore.NewConsoleEncoder(zap.NewDevelopmentEncoderConfig()),
+				zapcore.AddSync(io.Discard),
+				zapcore.ErrorLevel,
+			)).Sugar())
+
+			// Compare nmap pre-scan args
+			if req.ScanSettings.DiscoveryNmapArgsPrescan != scanScope.ScanSettings.DiscoveryNmapArgsPrescan {
+
+				// Execute dry run for Nmap pre-scan arguments
+				pretest, errPretest := discovery.NewScanner(
+					loggerDiscard,
+					[]string{"localhost"},
+					conf.Paths.Nmap,
+					strings.Split(req.ScanSettings.DiscoveryNmapArgsPrescan, " "),
+					false,
+					nil,
+					"",
+					nil,
+					"",
+					"",
+					"",
+					"",
+					false,
+					[]string{},
+					0,
+				)
+				if errPretest != nil {
+					logger.Warningf("%s scanner initialization failed: %s", "DryRunPreScan", errPretest)
+					core.RespondInternalError(ctx) // Return generic error information. Situation already logged!
+					return
+				}
+
+				// Execute the scan, if it takes more than 0.5 second then arguments validation passed.
+				pretestResult := pretest.Run(argsTestTime)
+
+				// Check success
+				if pretestResult.Exception &&
+					!strings.Contains(pretestResult.Status, "this feature requires root privileges") { // At this point Nmap has already passed argument verification
+					core.Respond(ctx, true, "Invalid Nmap arguments for pre-scan.", responseBody{})
+					return
+				}
+			}
+
+			// Compare nmap args
+			if req.ScanSettings.DiscoveryNmapArgs != scanScope.ScanSettings.DiscoveryNmapArgs {
+
+				// Execute dry run for Nmap scan arguments
+				test, errTest := discovery.NewScanner(
+					loggerDiscard,
+					[]string{"localhost"},
+					conf.Paths.Nmap,
+					strings.Split(req.ScanSettings.DiscoveryNmapArgs, " "),
+					false,
+					nil,
+					"",
+					nil,
+					"",
+					"",
+					"",
+					"",
+					false,
+					[]string{},
+					0,
+				)
+				if errTest != nil {
+					logger.Warningf("%s scanner initialization failed: %s", "DryRun", errTest)
+					core.RespondInternalError(ctx) // Return generic error information. Situation already logged!
+					return
+				}
+
+				// Execute the scan, if it takes more than 0.5 second then arguments validation passed.
+				testResult := test.Run(argsTestTime)
+
+				// Check success
+				if testResult.Exception &&
+					!strings.Contains(testResult.Status, "this feature requires root privileges") { // At this point Nmap has already passed argument verification
+					core.Respond(ctx, true, "Invalid Nmap arguments.", responseBody{})
+					return
+				}
+			}
+		}
+
 		// Request manager to update scan settings
 		errRpc := manager.RpcUpdateSettings(logger, core.RpcClient(), req.Id, req.ScanSettings)
 		if errors.Is(errRpc, utils.ErrRpcConnectivity) {
@@ -665,7 +765,9 @@ var ScopeCreateUpdateCustom = func() gin.HandlerFunc {
 	}
 
 	// Define expected response structure
-	type responseBody struct{}
+	type responseBody struct {
+		Warnings []string `json:"warnings"`
+	}
 
 	// Return request handling function
 	return func(ctx *gin.Context) {
@@ -701,7 +803,7 @@ var ScopeCreateUpdateCustom = func() gin.HandlerFunc {
 		}
 
 		// Don't allow 0 retention cycles, but change it to -1 (keep all). In case of a bug, cycle retention would
-		// be unintentionally zero, causing all scan results (outside of the current scan cycle) to be wiped.
+		// be unintentionally zero, causing all scan results (outside the current scan cycle) to be wiped.
 		if req.CyclesRetention <= 0 {
 			req.CyclesRetention = -1
 		}
@@ -845,11 +947,18 @@ var ScopeCreateUpdateCustom = func() gin.HandlerFunc {
 			respMsg = "Scope created."
 		}
 
+		// Prepare working memory
+		var warnLarge = uint(0)
+		var warnSplits = uint(0)
+
 		// Validate and sanitize scope targets and synchronize them with the scopedb
 		if req.Targets != nil {
 
-			// Prepare target address counter
-			totalTargets := uint(0)
+			// Prepare working memory
+			var totalTargets = uint(0)
+
+			// Prepare actual list of targets to hold sanitized data
+			targets := make([]managerdb.T_discovery, len(*req.Targets))
 
 			// Sanitize and count new scope targets
 			for _, target := range *req.Targets {
@@ -877,8 +986,51 @@ var ScopeCreateUpdateCustom = func() gin.HandlerFunc {
 					return
 				}
 
-				// Count
-				totalTargets += count
+				// Update target size
+				target.InputSize = count
+
+				// Split into smaller targets if necessary or directly append to list of targets
+				if count > utils.NetworkSizeSplit {
+
+					// Warn on overly large inputs
+					if count > utils.NetworkSizeSkip {
+						warnLarge += 1
+					}
+
+					// Warn about split
+					warnSplits += 1
+
+					// Split into smaller subnets if too big for Nmap
+					subnets, errSubnets := utils.SplitNetworkIpV4(target.Input, utils.NetworkSizeSplit) // Create ideal bunches of 1024 if splitting is necessary
+					if errSubnets != nil {
+						logger.Errorf("Could not split network '%s': %s", target.Input, errSubnets)
+						core.RespondInternalError(ctx) // Return generic error information
+						return
+					}
+
+					// Generate target entries for split network
+					// Set correct target size
+					for _, subnet := range subnets {
+
+						t := target // Copy target struct
+						t.Input = subnet
+						t.InputSize = utils.NetworkSizeSplit
+
+						// Count
+						totalTargets += utils.NetworkSizeSplit
+
+						// Append to targets
+						targets = append(targets, t)
+					}
+
+				} else {
+
+					// Count
+					totalTargets += count
+
+					// Append to targets
+					targets = append(targets, target)
+				}
 			}
 
 			// Check whether group has sufficient limits left
@@ -907,7 +1059,7 @@ var ScopeCreateUpdateCustom = func() gin.HandlerFunc {
 				logger,
 				core.RpcClient(),
 				scopeId,
-				*req.Targets,
+				targets,
 				false,
 			)
 			if errRpc != nil && errRpc.Error() == manager.ErrScopeUpdateOngoing.Error() { // Errors received from RPC lose their original type!!
@@ -947,8 +1099,22 @@ var ScopeCreateUpdateCustom = func() gin.HandlerFunc {
 			respMsg = "Scope updated."
 		}
 
+		// Prepare warnings
+		var warnings []string
+		if warnSplits > 0 {
+			warnings = append(warnings, fmt.Sprintf("%d large subnet(s) splitted.", warnSplits))
+		}
+		if warnLarge > 0 {
+			warnings = append(warnings, fmt.Sprintf("%d subnet(s) were extremely large.", warnLarge))
+		}
+
+		// Prepare response body
+		body := responseBody{
+			Warnings: warnings,
+		}
+
 		// Return response
-		core.Respond(ctx, false, respMsg, responseBody{})
+		core.Respond(ctx, false, respMsg, body)
 		return
 	}
 }
@@ -1022,7 +1188,7 @@ var ScopeCreateUpdateNetworks = func() gin.HandlerFunc {
 		}
 
 		// Don't allow 0 retention cycles, but change it to -1 (keep all). In case of a bug, cycle retention would
-		// be unintentionally zero, causing all scan results (outside of the current scan cycle) to be wiped.
+		// be unintentionally zero, causing all scan results (outside the current scan cycle) to be wiped.
 		if req.CyclesRetention <= 0 {
 			req.CyclesRetention = -1
 		}
@@ -1580,7 +1746,9 @@ var ScopeResetSecret = func(smtpConnection *utils.Smtp) gin.HandlerFunc {
 	}
 
 	// Define expected response structure
-	type responseBody struct{}
+	type responseBody struct {
+		Secret string `json:"secret"` // Only returned if it couldn't be sent via encrypted e-mail
+	}
 
 	// Return request handling function
 	return func(ctx *gin.Context) {
@@ -1640,28 +1808,41 @@ var ScopeResetSecret = func(smtpConnection *utils.Smtp) gin.HandlerFunc {
 			return
 		}
 
-		// Prepare mail values
-		subject := fmt.Sprintf("New secret for scan scope '%s'", scanScope.Name)
-		message := fmt.Sprintf("Scan Scope:\t%s\n"+
-			"Scope Secret:\t%s\n\n"+
-			"Scan scopes can be configured at %s.",
-			scanScope.Name,
-			newToken,
-			ctx.Request.Host, // Prepare dynamically, website might be accessed via different domains
-		)
-
-		// Enable encryption by setting user certificate, if available
-		var encCert [][]byte
-		if len(contextUser.Certificate) > 0 {
-			encCert = [][]byte{contextUser.Certificate}
-		}
+		// Prepare response body
+		msg := ""
+		body := responseBody{}
 
 		// Send new scope secret to user via encrypted e-mail
 		if _build.DevMode {
 			logger.Infof("Skipping user e-mail notification during development.")
-		} else {
+			logger.Infof("Set '%s' as development scope secret for scan scope '%s'.", newToken, scanScope.Name)
+
+			// Set response message
+			msg = "Scope secret set."
+
+			// Expose new password once through web interface in a non-persistent way
+			body.Secret = newToken
+		} else if len(contextUser.Certificate) > 0 {
+
+			// Log action
 			logger.Debugf("Sending new scope secret to requesting user via e-mail.")
-			errMail := smtp.SendMail3(
+
+			// Set response message
+			msg = "Scope secret sent via e-mail."
+
+			// Prepare mail values
+			subject := fmt.Sprintf("New secret for scan scope '%s'", scanScope.Name)
+			message := fmt.Sprintf("Scan Scope:\t%s\n"+
+				"Scope Secret:\t%s\n\n"+
+				"Scan scopes can be configured at %s.",
+				scanScope.Name,
+				newToken,
+				ctx.Request.Host, // Prepare dynamically, website might be accessed via different domains
+			)
+
+			// Send new token to user via encrypted e-mail
+			encCert := [][]byte{contextUser.Certificate}
+			errMail := smtp.SendMail2(
 				smtpConnection.Server,
 				smtpConnection.Port,
 				smtpConnection.Username,
@@ -1669,12 +1850,11 @@ var ScopeResetSecret = func(smtpConnection *utils.Smtp) gin.HandlerFunc {
 				smtpConnection.Sender,
 				[]mail.Address{{Name: contextUser.Name + " " + contextUser.Surname, Address: contextUser.Email}},
 				subject,
-				message,
+				[]byte(message),
 				smtpConnection.OpensslPath,
 				smtpConnection.SignatureCert,
 				smtpConnection.SignatureKey,
 				encCert,
-				"",
 			)
 			if errMail != nil {
 				logger.Errorf(
@@ -1683,12 +1863,30 @@ var ScopeResetSecret = func(smtpConnection *utils.Smtp) gin.HandlerFunc {
 					contextUser.Email,
 					errMail,
 				)
-				core.RespondInternalError(ctx) // Return generic error information
+				core.Respond(ctx, true, "Could not e-mail new scope secret.", responseBody{})
 				return
 			}
+		} else {
+
+			// Log action
+			logger.Debugf("Returning new scope secret to requesting user via web interface.")
+
+			// Set response message
+			msg = "Scope secret set."
+
+			// Expose new password once through web interface in a non-persistent way
+			body.Secret = newToken
+		}
+
+		// Log event
+		errEvent := database.NewEvent(contextUser, database.EventScopeSecret, "")
+		if errEvent != nil {
+			logger.Errorf("Could not create event log: %s", errEvent)
+			core.RespondInternalError(ctx) // Return generic error information
+			return
 		}
 
 		// Return response
-		core.Respond(ctx, false, "Secret reset and sent via E-mail.", responseBody{})
+		core.Respond(ctx, false, msg, body)
 	}
 }

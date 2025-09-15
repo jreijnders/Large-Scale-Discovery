@@ -1,7 +1,7 @@
 /*
 * Large-Scale Discovery, a network scanning solution for information gathering in large IT/OT network environments.
 *
-* Copyright (c) Siemens AG, 2016-2024.
+* Copyright (c) Siemens AG, 2016-2025.
 *
 * This work is licensed under the terms of the MIT license. For a copy, see the LICENSE file in the top-level
 * directory or visit <https://opensource.org/licenses/MIT>.
@@ -40,8 +40,8 @@ import (
 
 var scopeModuleLock = nsync.NewNamedMutex() // Named mutex to prevent parallel changes on the same scope and module data
 
-func agentCompatible(agentCompatibilityLevel int) bool {
-	if agentCompatibilityLevel < CompatibilityLevel {
+func agentCompatible(apiVersionAgent scanUtils.Version) bool {
+	if BrokerApiVersion.IsGreaterThan(apiVersionAgent) {
 		return false
 	}
 	return true
@@ -66,10 +66,10 @@ func (b *Broker) RequestScanTasks(rpcArgs *ArgsGetScanTask, rpcReply *ReplyGetSc
 	}()
 
 	// Check if agent version is compatible
-	if !agentCompatible(rpcArgs.CompatibilityLevel) {
+	if !agentCompatible(rpcArgs.ApiVersion) {
 		logger.Warningf(
-			"Invalid agent compatibility level '%d' on '%s' (%s/%s).",
-			rpcArgs.CompatibilityLevel,
+			"Invalid agent API version '%s' on '%s' (%s/%s).",
+			rpcArgs.ApiVersion.String(),
 			rpcArgs.Name,
 			rpcArgs.Host,
 			rpcArgs.Ip,
@@ -202,7 +202,7 @@ func (b *Broker) RequestScanTasks(rpcArgs *ArgsGetScanTask, rpcReply *ReplyGetSc
 func (b *Broker) SubmitScanResult(rpcArgs *ArgsSaveScanResult, rpcReply *struct{}) error {
 
 	// Check if agent version is compatible
-	if !agentCompatible(rpcArgs.CompatibilityLevel) {
+	if !agentCompatible(rpcArgs.ApiVersion) {
 
 		// Generate UUID for context
 		uuid := shortuuid.New()[0:10] // Shorten uuid, doesn't need to be that long
@@ -218,8 +218,8 @@ func (b *Broker) SubmitScanResult(rpcArgs *ArgsSaveScanResult, rpcReply *struct{
 
 		// Log message
 		logger.Warningf(
-			"Invalid agent compatibility level '%d' on '%s' (%s/%s).",
-			rpcArgs.CompatibilityLevel,
+			"Invalid agent API version '%s' on '%s' (%s/%s).",
+			rpcArgs.ApiVersion.String(),
 			rpcArgs.Name,
 			rpcArgs.Host,
 			rpcArgs.Ip,
@@ -255,8 +255,8 @@ func unlock(scanScopeId uint64, module string) {
 	scopeModuleLock.Unlock(strconv.FormatUint(scanScopeId, 10) + module)
 }
 
-// cacheAgentDetails updates cached agent information. This information will be persisted and regularly updated in the managerdb
-// where it can be loaded by the web backend to be presented to the web interface users.
+// cacheAgentDetails updates cached agent information. This information will be persisted and regularly updated
+// in the managerdb where it can be loaded by the web backend to be presented to the web interface users.
 func cacheAgentDetails(logger scanUtils.Logger, rpcArgs *ArgsGetScanTask, scanScope *managerdb.T_scan_scope) error {
 
 	// Prepare map of scan counts
@@ -301,6 +301,9 @@ func cacheAgentDetails(logger scanUtils.Logger, rpcArgs *ArgsGetScanTask, scanSc
 		scanScope.Id,
 		tasks,
 		rpcArgs.SystemData,
+		rpcArgs.BuildCommit,
+		rpcArgs.BuildTimestamp,
+		rpcArgs.ApiVersion.String(),
 	)
 
 	// Return nil as everything went fine

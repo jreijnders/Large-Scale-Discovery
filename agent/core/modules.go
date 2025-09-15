@@ -1,7 +1,7 @@
 /*
 * Large-Scale Discovery, a network scanning solution for information gathering in large IT/OT network environments.
 *
-* Copyright (c) Siemens AG, 2016-2024.
+* Copyright (c) Siemens AG, 2016-2025.
 *
 * This work is licensed under the terms of the MIT license. For a copy, see the LICENSE file in the top-level
 * directory or visit <https://opensource.org/licenses/MIT>.
@@ -137,6 +137,37 @@ func launchDiscovery(
 	}
 	if len(scanTask.ScanSettings.DiscoveryExcludeDomains) > 0 {
 		excludeDomains = strings.Split(strings.Replace(scanTask.ScanSettings.DiscoveryExcludeDomains, " ", "", -1), ",")
+	}
+
+	// Exclude sensitive ports from the scan, if specified
+	if scanTask.ScanSettings.SensitivePorts != "" {
+
+		// Local helper function to merge sensitive ports into an existing exclude-ports flag or append a new one if not yet specified
+		mergeExcludePorts := func(args []string) []string {
+			for i, arg := range args {
+				// Look for exclude-ports flag
+				if arg == "--exclude-ports" && i+1 < len(args) {
+
+					// Merge existing ports with sensitive ports
+					args[i+1] = args[i+1] + "," + scanTask.ScanSettings.SensitivePorts
+
+					// Return updated Nmap Arguments
+					return args
+				}
+			}
+
+			// No existing exclude-ports flag found, append new one
+			args = append(args, "--exclude-ports", scanTask.ScanSettings.SensitivePorts)
+
+			// Return updated Nmap Arguments
+			return args
+		}
+
+		// Exclude sensitive ports from the Nmap pre-scan
+		nmapArgsPreScan = mergeExcludePorts(nmapArgsPreScan)
+
+		// Exclude sensitive ports from the Nmap main scan
+		nmapArgs = mergeExcludePorts(nmapArgs)
 	}
 
 	// Classify whether target is reachable via IPv4 and/or IPv6
@@ -408,13 +439,25 @@ func launchSsl(
 		conf,
 	)
 	if errScan != nil {
-		logger.Warningf("%s scan initialization failed: %s", label, errScan)
-		rpcArgs.Result = &ssl.Result{
-			Exception: true,
-			Status:    fmt.Sprintf("%s scan initialization failed: %s", label, errScan.Error()),
+
+		// Return suitable error or pass through original exit status
+		switch {
+		case strings.Contains(errScan.Error(), "exit status 0xc000013a"): // Exit code for ctrl+c on Windows
+			logger.Debugf("%s scan initialization interrupted.", label)
+			return
+		case strings.Contains(errScan.Error(), "exit status 130"): // Exit code for ctrl+c on Linux
+			logger.Debugf("%s scan initialization interrupted.", label)
+			return
+		// TODO: Add clauses for other known exit codes we might want to define closer.
+		default:
+			logger.Warningf("%s scan initialization failed: %s", label, errScan)
+			rpcArgs.Result = &ssl.Result{
+				Exception: true,
+				Status:    fmt.Sprintf("%s scan initialization failed: %s", label, errScan.Error()),
+			}
+			chResults <- rpcArgs
+			return
 		}
-		chResults <- rpcArgs
-		return
 	}
 
 	// Execute the scan

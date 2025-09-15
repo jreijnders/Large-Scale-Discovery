@@ -1,7 +1,7 @@
 /*
 * Large-Scale Discovery, a network scanning solution for information gathering in large IT/OT network environments.
 *
-* Copyright (c) Siemens AG, 2016-2024.
+* Copyright (c) Siemens AG, 2016-2025.
 *
 * This work is licensed under the terms of the MIT license. For a copy, see the LICENSE file in the top-level
 * directory or visit <https://opensource.org/licenses/MIT>.
@@ -24,15 +24,26 @@ import (
 
 var agentConfig = &AgentConfig{} // Global configuration
 var agentConfigLock sync.Mutex   // Lock required to avoid simultaneous requesting/updating of config
-
-var templateCredentialsLdap = Credentials{
-	"If *no* explicit LDAP credentials are configured, implicit authentication will be tried on Windows. Implicit authentication does not work on Linux and queries would be skipped.", "", "", "",
+var templateCredentialsLdap = CredentialsGssapi{
+	Credentials: Credentials{
+		Comment:  "If *no* explicit LDAP credentials are configured, implicit authentication will be tried on Windows. Implicit authentication does not work on Linux and queries would be skipped.",
+		Domain:   "",
+		User:     "",
+		Password: "",
+	},
+	DisableGssapi: false,
 }
 var templateCredentialsSmb = Credentials{
-	"If *no* explicit SMB credentials are configured, implicit authentication will be tried on Windows. SMB crawling is not supported on Linux and would be skipped.", "", "", "",
+	Comment:  "If *no* explicit SMB credentials are configured, implicit authentication will be tried on Windows. SMB crawling is not supported on Linux and would be skipped.",
+	Domain:   "",
+	User:     "",
+	Password: "",
 }
 var templateCredentialsWeb = Credentials{
-	"If *no* explicit credentials are configured, authentication will be skipped. Works both, on Windows and Linux.", "", "", "",
+	Comment:  "If *no* explicit credentials are configured, authentication will be skipped. Works both, on Windows and Linux.",
+	Domain:   "",
+	User:     "",
+	Password: "",
 }
 
 // Init initializes the configuration module and loads a JSON configuration. If JSON is not existing, a default
@@ -169,6 +180,11 @@ type Credentials struct {
 	Password string `json:"password"`
 }
 
+type CredentialsGssapi struct {
+	Credentials
+	DisableGssapi bool `json:"disable_gssapi"`
+}
+
 type Module struct {
 	MaxInstances int `json:"max_instances"`
 }
@@ -201,11 +217,11 @@ func (m *Module) UnmarshalJSON(b []byte) error {
 }
 
 type ModuleBanner struct {
-	Module
+	Module Module `json:""` // Exported field
 }
 
 type ModuleDiscovery struct {
-	Module
+	Module Module `json:""` // Exported field
 	// Discovery-specific configuration values.
 	LdapServerComment  string   `json:"ldap_server_comment"`
 	LdapServer         string   `json:"ldap_server"`
@@ -221,7 +237,7 @@ func (m *ModuleDiscovery) UnmarshalJSON(b []byte) error {
 	var raw aux
 
 	// Set default value if no other value is present in the read Json file
-	raw.MaxInstances = -1
+	raw.Module.MaxInstances = -1
 
 	// Unmarshal serialized Json into temporary auxiliary structure
 	err := json.Unmarshal(b, &raw)
@@ -248,15 +264,15 @@ func (m *ModuleDiscovery) UnmarshalJSON(b []byte) error {
 }
 
 type ModuleNfs struct {
-	Module
+	Module Module `json:""` // Exported field
 }
 
 type ModuleSsh struct {
-	Module
+	Module Module `json:""` // Exported field
 }
 
 type ModuleSsl struct {
-	Module
+	Module Module `json:""` // Exported field
 	// Ssl-specific configuration values.
 	Comment              string `json:"custom_truststore_file_comment"`
 	CustomTruststoreFile string `json:"custom_truststore_file"` // Path to custom trust store. Otherwise, OS one is used
@@ -290,10 +306,10 @@ func (m *ModuleSsl) UnmarshalJSON(b []byte) error {
 }
 
 type ModuleWebcrawler struct {
-	Module
+	Module Module `json:""` // Exported field
 	// Webcrawler-specific configuration values.
 	Download      bool     `json:"download_files"` // Whether to download downloadable contents
-	DownloadPath  string   `json:"download_path"`  // Path to to folder to download files to. If empty the working directory is chosen.
+	DownloadPath  string   `json:"download_path"`  // Path to the folder to download files to. If empty the working directory is chosen.
 	DownloadTypes []string `json:"download_types"` // Response content types to download
 }
 
@@ -324,7 +340,7 @@ func (m *ModuleWebcrawler) UnmarshalJSON(b []byte) error {
 }
 
 type ModuleWebenum struct {
-	Module
+	Module Module `json:""` // Exported field
 }
 
 type AgentConfig struct {
